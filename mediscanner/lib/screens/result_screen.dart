@@ -144,7 +144,7 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.08),
+                              color: Colors.black.withValues(alpha: 0.08),
                               blurRadius: 6,
                               offset: const Offset(0, 2),
                             ),
@@ -265,7 +265,7 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
                 : Container(
                     width: 72,
                     height: 72,
-                    color: const Color(0xFF00696B).withOpacity(0.12),
+                    color: const Color(0xFF00696B).withValues(alpha: 0.12),
                     child: const Icon(
                       Icons.medication_liquid_rounded,
                       color: Color(0xFF00696B),
@@ -284,7 +284,7 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: confColor.withOpacity(0.15),
+                        color: confColor.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
@@ -308,7 +308,7 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF0288D1).withOpacity(0.12),
+                          color: const Color(0xFF0288D1).withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(

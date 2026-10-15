@@ -112,7 +112,7 @@ class _ApiKeyModalState extends State<ApiKeyModal> {
           borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.3),
+              color: Colors.black.withValues(alpha: 0.3),
               blurRadius: 20,
               offset: const Offset(0, -4),
             ),
@@ -142,7 +142,7 @@ class _ApiKeyModalState extends State<ApiKeyModal> {
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF00696B).withOpacity(0.12),
+                      color: const Color(0xFF00696B).withValues(alpha: 0.12),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(

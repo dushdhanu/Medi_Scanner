@@ -130,7 +130,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                             Container(
                               padding: const EdgeInsets.all(20),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF00696B).withOpacity(0.1),
+                                color: const Color(0xFF00696B).withValues(alpha: 0.1),
                                 shape: BoxShape.circle,
                               ),
                               child: const Icon(
@@ -184,7 +184,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                     : Container(
                                         width: 54,
                                         height: 54,
-                                        color: const Color(0xFF00696B).withOpacity(0.12),
+                                        color: const Color(0xFF00696B).withValues(alpha: 0.12),
                                         child: const Icon(
                                           Icons.medication_rounded,
                                           color: Color(0xFF00696B),
@@ -223,7 +223,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                               ),
                               trailing: IconButton(
                                 icon: const Icon(Icons.delete_outline_rounded, size: 20),
-                                color: Colors.redAccent.withOpacity(0.8),
+                                color: Colors.redAccent.withValues(alpha: 0.8),
                                 onPressed: () => _deleteItem(item.id),
                               ),
                               onTap: () {
