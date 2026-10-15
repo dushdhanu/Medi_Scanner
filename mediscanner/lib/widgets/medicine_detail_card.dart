@@ -75,14 +75,14 @@ class MedicineDetailCard extends StatelessWidget {
         border: Border.all(
           color: isDark
               ? const Color(0xFF2B3A3B)
-              : accentColor.withOpacity(0.18),
+              : accentColor.withValues(alpha: 0.18),
           width: 1.2,
         ),
         boxShadow: [
           BoxShadow(
             color: isDark
-                ? Colors.black.withOpacity(0.2)
-                : accentColor.withOpacity(0.04),
+                ? Colors.black.withValues(alpha: 0.2)
+                : accentColor.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -99,7 +99,7 @@ class MedicineDetailCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: accentColor.withOpacity(isDark ? 0.22 : 0.12),
+                    color: accentColor.withValues(alpha: isDark ? 0.22 : 0.12),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
@@ -123,7 +123,7 @@ class MedicineDetailCard extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
-                            color: accentColor.withOpacity(0.15),
+                            color: accentColor.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(

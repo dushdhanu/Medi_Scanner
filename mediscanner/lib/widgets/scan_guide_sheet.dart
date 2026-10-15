@@ -44,7 +44,7 @@ class ScanGuideSheet extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF141C1C) : Colors.white,
-        borderRadius: const verticalTopRadius(28),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
       child: Column(
@@ -67,7 +67,7 @@ class ScanGuideSheet extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF00696B).withOpacity(0.12),
+                  color: const Color(0xFF00696B).withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -171,5 +171,3 @@ class ScanGuideSheet extends StatelessWidget {
     );
   }
 }
-
-BorderRadius verticalTopRadius(double r) => BorderRadius.vertical(top: Radius.circular(r));
