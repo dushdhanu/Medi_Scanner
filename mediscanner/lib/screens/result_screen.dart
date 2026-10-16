@@ -3,8 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:share_plus/share_plus.dart';
 import '../models/medicine_analysis_result.dart';
+import '../services/pdf_export_service.dart';
+import '../services/tts_service.dart';
 import '../widgets/medical_disclaimer_banner.dart';
 import '../widgets/medicine_detail_card.dart';
+import '../widgets/reminder_dialog.dart';
 
 class ResultScreen extends StatefulWidget {
   final MedicineAnalysisResult result;
@@ -20,15 +23,21 @@ class ResultScreen extends StatefulWidget {
 
 class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final TtsService _ttsService = TtsService();
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _ttsService.init();
+    _ttsService.onStateChanged = () {
+      if (mounted) setState(() {});
+    };
   }
 
   @override
   void dispose() {
+    _ttsService.stop();
     _tabController.dispose();
     super.dispose();
   }
