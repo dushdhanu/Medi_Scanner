@@ -1,9 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/api_key_service.dart';
+import '../services/gemini_service.dart';
 
 class InteractionCheckerScreen extends StatefulWidget {
   const InteractionCheckerScreen({super.key});
@@ -52,8 +52,8 @@ class _InteractionCheckerScreenState extends State<InteractionCheckerScreen> {
       return;
     }
 
-    final apiKey = await ApiKeyService.getApiKey();
-    if (apiKey.isEmpty) {
+    final hasApiKey = await ApiKeyService.hasApiKey();
+    if (!hasApiKey) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please configure your Gemini API Key in Settings first.'),
@@ -69,42 +69,10 @@ class _InteractionCheckerScreenState extends State<InteractionCheckerScreen> {
       final bytesA = await _imageA!.readAsBytes();
       final bytesB = await _imageB!.readAsBytes();
 
-      final model = GenerativeModel(
-        model: 'gemini-1.5-flash',
-        apiKey: apiKey,
+      final text = await GeminiService.checkDrugInteraction(
+        bytesA: bytesA,
+        bytesB: bytesB,
       );
-
-      final prompt = '''
-You are an expert clinical pharmacologist.
-Analyze these two medicine images (Medicine 1 and Medicine 2).
-Identify the active ingredients of both.
-Determine whether there is any known Drug-to-Drug Interaction (DDI), contraindication, or danger if a patient consumes both concurrently.
-
-Format your answer clearly in TWO sections:
-1. සිංහලෙන් (Sinhala):
-- ඖෂධ 1 සහ ඖෂධ 2 හි ක්‍රියාකාරී රසායනික ද්‍රව්‍ය
-- අන්තර්ක්‍රියා අවදානම් මට්ටම: [ආරක්ෂිතයි / ප්‍රවේශම් වන්න / ඉතා අනතුරුදායකයි]
-- විස්තරාත්මක වෛද්‍ය පැහැදිලි කිරීම
-- නිර්දේශිත ක්‍රියාමාර්ග
-
-2. In English:
-- Identified compounds
-- Interaction Risk Level: [Safe / Moderate Caution / Severe Danger]
-- Clinical mechanism of interaction
-- Pharmacist recommendations
-
-Finish with a clear medical disclaimer.
-''';
-
-      final response = await model.generateContent([
-        Content.text(prompt),
-        Content.multi([
-          DataPart('image/jpeg', bytesA),
-          DataPart('image/jpeg', bytesB),
-        ]),
-      ]);
-
-      final text = response.text ?? 'No analysis returned. Please try again.';
 
       // Determine approximate risk level
       String risk = 'Moderate Caution';

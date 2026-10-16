@@ -129,7 +129,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           ],
         ),
         content: const Text(
-          'To scan medicine labels using the Google Gemini Vision API (gemini-1.5-flash), please provide your free API key from Google AI Studio.',
+          'To scan medicine labels using the Google Gemini Vision API, please provide your free API key from Google AI Studio.',
         ),
         actions: [
           TextButton(
@@ -206,47 +206,56 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
     return Scaffold(
       appBar: AppBar(
+        titleSpacing: 12,
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(7),
+              padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
                 color: const Color(0xFF00696B),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(9),
               ),
-              child: const Icon(Icons.document_scanner_rounded, color: Colors.white, size: 20),
+              child: const Icon(Icons.document_scanner_rounded, color: Colors.white, size: 19),
             ),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'MedScan AI',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 19,
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'MedScan AI',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 17,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                Text(
-                  'ඖෂධ හඳුනාගැනීම (Bilingual)',
-                  style: GoogleFonts.notoSansSinhala(
-                    fontSize: 10.5,
-                    color: const Color(0xFF00696B),
-                    fontWeight: FontWeight.w600,
+                  Text(
+                    'ඖෂධ හඳුනාගැනීම',
+                    style: GoogleFonts.notoSansSinhala(
+                      fontSize: 10,
+                      color: const Color(0xFF00696B),
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),
         actions: [
           // API Key status button
           IconButton(
+            visualDensity: VisualDensity.compact,
             tooltip: _hasApiKey ? 'Gemini API Key Configured' : 'Set Gemini API Key',
             icon: Stack(
               clipBehavior: Clip.none,
               children: [
-                const Icon(Icons.vpn_key_rounded),
+                const Icon(Icons.vpn_key_rounded, size: 21),
                 Positioned(
                   right: -2,
                   top: -2,
@@ -265,8 +274,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           ),
           // Emergency Directory Button
           IconButton(
+            visualDensity: VisualDensity.compact,
             tooltip: 'Emergency Hotlines & Poisons Info',
-            icon: const Icon(Icons.emergency_rounded, color: Colors.redAccent),
+            icon: const Icon(Icons.emergency_rounded, color: Colors.redAccent, size: 21),
             onPressed: () {
               Navigator.push(
                 context,
@@ -276,14 +286,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           ),
           // Best practices guide button
           IconButton(
+            visualDensity: VisualDensity.compact,
             tooltip: 'Scanning Tips',
-            icon: const Icon(Icons.help_outline_rounded),
+            icon: const Icon(Icons.help_outline_rounded, size: 21),
             onPressed: () => ScanGuideSheet.show(context),
           ),
           // History button
           IconButton(
+            visualDensity: VisualDensity.compact,
             tooltip: 'Scan History',
-            icon: const Icon(Icons.history_rounded),
+            icon: const Icon(Icons.history_rounded, size: 21),
             onPressed: () {
               Navigator.push(
                 context,
@@ -291,6 +303,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               );
             },
           ),
+          const SizedBox(width: 4),
         ],
       ),
       body: Stack(
