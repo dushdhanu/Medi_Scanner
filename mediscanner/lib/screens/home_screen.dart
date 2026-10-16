@@ -6,8 +6,11 @@ import '../services/api_key_service.dart';
 import '../services/gemini_service.dart';
 import '../services/history_service.dart';
 import '../widgets/api_key_modal.dart';
+import '../widgets/medical_terms_onboarding_modal.dart';
 import '../widgets/scan_guide_sheet.dart';
+import 'emergency_directory_screen.dart';
 import 'history_screen.dart';
+import 'interaction_checker_screen.dart';
 import 'result_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -36,6 +39,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     _pulseAnimation = Tween<double>(begin: 0.96, end: 1.04).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      MedicalTermsOnboardingModal.showIfNeeded(context);
+    });
   }
 
   @override
@@ -256,6 +263,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             ),
             onPressed: () => ApiKeyModal.show(context, onKeySaved: _checkApiKey),
           ),
+          // Emergency Directory Button
+          IconButton(
+            tooltip: 'Emergency Hotlines & Poisons Info',
+            icon: const Icon(Icons.emergency_rounded, color: Colors.redAccent),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const EmergencyDirectoryScreen()),
+              );
+            },
+          ),
           // Best practices guide button
           IconButton(
             tooltip: 'Scanning Tips',
@@ -292,7 +310,15 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
                 // Main Capture Action Buttons
                 _buildCaptureButtons(isDark),
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
+
+                // Phase 2: Drug Interaction Checker Card
+                _buildInteractionCheckerCard(isDark),
+                const SizedBox(height: 14),
+
+                // Phase 3: Emergency Helpline Quick Access Banner
+                _buildEmergencyHotlineBanner(isDark),
+                const SizedBox(height: 20),
 
                 // Supported Medicine Types Section
                 _buildSupportedTypesCard(isDark),
@@ -742,6 +768,110 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInteractionCheckerCard(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF161F20) : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isDark ? const Color(0xFF283636) : const Color(0xFFE2EDED),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0288D1).withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.compare_arrows_rounded, color: Color(0xFF0288D1), size: 24),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Drug Interaction Checker',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: isDark ? Colors.white : const Color(0xFF1E293B),
+                  ),
+                ),
+                Text(
+                  'බෙහෙත් 2ක් එකවර ගැනීම ආරක්ෂිතදැයි පරීක්ෂා කරන්න',
+                  style: GoogleFonts.notoSansSinhala(
+                    fontSize: 11,
+                    color: isDark ? const Color(0xFF8C9E9E) : const Color(0xFF64748B),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0288D1),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const InteractionCheckerScreen()),
+              );
+            },
+            child: const Text('Check', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmergencyHotlineBanner(bool isDark) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const EmergencyDirectoryScreen()),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF281313) : const Color(0xFFFFF1F2),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isDark ? const Color(0xFF5A2020) : const Color(0xFFFFCCD2),
+          ),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.emergency_rounded, color: Color(0xFFC62828), size: 22),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Emergency Hotlines & Poisons Info (1990 / 011-2686143)',
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                  color: isDark ? const Color(0xFFFFB4AB) : const Color(0xFFBA1A1A),
+                ),
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, size: 20, color: Color(0xFFC62828)),
+          ],
         ),
       ),
     );

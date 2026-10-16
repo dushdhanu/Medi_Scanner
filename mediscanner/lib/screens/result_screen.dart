@@ -110,6 +110,27 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.alarm_add_rounded),
+            tooltip: 'Set Dose Reminder (මාත්‍රා මතක් කිරීම්)',
+            onPressed: () {
+              ReminderDialog.show(
+                context,
+                medicineName: res.english.brandName,
+                isSinhala: _tabController.index == 0,
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.picture_as_pdf_rounded),
+            tooltip: 'Export PDF Report',
+            onPressed: () {
+              PdfExportService.exportMedicineReport(
+                result: res,
+                isSinhala: _tabController.index == 0,
+              );
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.share_rounded),
             tooltip: 'Share Report',
             onPressed: _shareResult,
@@ -402,7 +423,10 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
         // 1. Prominent Medical Disclaimer Banner
         MedicalDisclaimerBanner(isSinhala: isSinhala),
 
-        // 2. Unreadable / OCR Notice Card (if any text was blurry or obscured)
+        // 2. Voice Reader (Text-to-Speech) Audio Bar
+        _buildVoiceReaderBar(data: data, isSinhala: isSinhala, isDark: isDark),
+
+        // 3. Unreadable / OCR Notice Card (if any text was blurry or obscured)
         if (data.unreadableNotice != null && data.unreadableNotice!.trim().isNotEmpty)
           MedicineDetailCard(
             title: isSinhala ? 'ලේබල කියවීමේ සටහන (OCR Clarification)' : 'Label Readability Notice',
@@ -534,6 +558,100 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildVoiceReaderBar({
+    required MedicineLanguageData data,
+    required bool isSinhala,
+    required bool isDark,
+  }) {
+    final isPlaying = _ttsService.state == TtsState.playing;
+
+    final speechBuffer = StringBuffer();
+    if (isSinhala) {
+      speechBuffer.write('ඖෂධයේ නම: ${data.brandName}. ');
+      speechBuffer.write('ක්‍රියාකාරී රසායනික ද්‍රව්‍ය: ${data.genericName}. ');
+      speechBuffer.write('මාත්‍රාව: ${data.dosageStrength}. ');
+      speechBuffer.write('භාවිතය සඳහා උපදෙස්: ${data.usageInstructions}. ');
+      if (data.precautions.isNotEmpty) {
+        speechBuffer.write('පූර්වාරක්ෂාවන්: ${data.precautions.join(", ")}. ');
+      }
+    } else {
+      speechBuffer.write('Medicine: ${data.brandName}. ');
+      speechBuffer.write('Active generic: ${data.genericName}, ${data.dosageStrength}. ');
+      speechBuffer.write('Instructions: ${data.usageInstructions}. ');
+      if (data.precautions.isNotEmpty) {
+        speechBuffer.write('Precautions: ${data.precautions.join(", ")}. ');
+      }
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF142424) : const Color(0xFFE0F2F1),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isDark ? const Color(0xFF00696B) : const Color(0xFF80CBC4),
+          width: 1.2,
+        ),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 18,
+            backgroundColor: const Color(0xFF00696B),
+            child: IconButton(
+              padding: EdgeInsets.zero,
+              icon: Icon(
+                isPlaying ? Icons.stop_rounded : Icons.volume_up_rounded,
+                size: 20,
+                color: Colors.white,
+              ),
+              onPressed: () {
+                if (isPlaying) {
+                  _ttsService.stop();
+                } else {
+                  _ttsService.speak(
+                    text: speechBuffer.toString(),
+                    isSinhala: isSinhala,
+                  );
+                }
+              },
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isPlaying
+                      ? (isSinhala ? 'හඬින් කියවමින් පවතී...' : 'Reading aloud...')
+                      : (isSinhala ? 'හඬින් අසන්න (Audio Voice Reader)' : 'Audio Voice Reader'),
+                  style: (isSinhala
+                          ? GoogleFonts.notoSansSinhala(fontWeight: FontWeight.bold)
+                          : GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold))
+                      .copyWith(
+                    fontSize: 13,
+                    color: isDark ? Colors.white : const Color(0xFF004D40),
+                  ),
+                ),
+                Text(
+                  isPlaying
+                      ? (isSinhala ? 'නැවැත්වීමට Stop ඔබන්න' : 'Tap stop to pause')
+                      : (isSinhala ? 'විස්තරය ශ්‍රවණය කිරීමට Play ඔබන්න' : 'Listen to instructions aloud'),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isDark ? const Color(0xFF80CBC4) : const Color(0xFF00696B),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
