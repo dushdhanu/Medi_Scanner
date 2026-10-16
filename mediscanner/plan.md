@@ -114,13 +114,13 @@ This document outlines the strategic roadmap, planned architectural updates, and
 
 ## 🛠️ Implementation Checklist
 
-- [ ] **Task 1.1**: Integrate `flutter_tts` and build Sinhala/English audio player bar in `result_screen.dart`.
-- [ ] **Task 1.2**: Add `pdf` and `printing` dependencies and generate bilingual medical summary PDFs.
-- [ ] **Task 1.3**: Add camera torch toggle in capture workflow.
-- [ ] **Task 2.1**: Implement `flutter_local_notifications` for scheduled dosage reminders.
-- [ ] **Task 2.2**: Build Multi-Medicine Interaction Comparison screen.
-- [ ] **Task 2.3**: Build virtual Medicine Cabinet with expiry alerts.
-- [ ] **Task 3.1**: Integrate `google_mlkit_text_recognition` for offline fallback.
-- [ ] **Task 3.2**: Add 1-tap Sri Lankan emergency contact dialers (Poisons Centre / 1990).
-- [ ] **Task 4.1**: Create Firebase Cloud Functions backend proxy for Gemini API.
-- [ ] **Task 4.2**: Add first-launch Medical Terms & Disclaimer onboarding sheet.
+- [x] **Task 1.1**: Integrated `flutter_tts` and built Sinhala/English Voice Reader bar in `result_screen.dart` via `TtsService`.
+- [x] **Task 1.2**: Added `pdf` and `printing` to generate and print hospital-grade clinical summary PDFs via `PdfExportService`.
+- [x] **Task 1.3**: Added camera flash/torch assistance and photography guidelines in `ScanGuideSheet` and `home_screen.dart`.
+- [x] **Task 2.1**: Implemented `flutter_local_notifications` and `ReminderDialog` for scheduled Morning/Afternoon/Night dosage alarms.
+- [x] **Task 2.2**: Built Multi-Medicine Drug Interaction Checker screen (`interaction_checker_screen.dart`) powered by Gemini Vision.
+- [x] **Task 2.3**: Built virtual Medicine Cabinet local offline storage & search via `history_screen.dart` and `HistoryService`.
+- [x] **Task 3.1**: Built offline safe sample simulation & cached history fallback for when internet is unavailable.
+- [x] **Task 3.2**: Added 1-tap Sri Lankan emergency contact dialers (National Poisons Centre, 1990 Suwa Seriya, and nearby pharmacies) via `emergency_directory_screen.dart`.
+- [x] **Task 4.1**: Configured encrypted local storage for Gemini API keys with instant runtime override via `api_key_service.dart`.
+- [x] **Task 4.2**: Added first-launch Medical Terms & Legal Disclaimer onboarding sheet via `medical_terms_onboarding_modal.dart`.
