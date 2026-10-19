@@ -15,19 +15,19 @@ class GeminiServiceException implements Exception {
 }
 
 class GeminiService {
-  /// Prioritized list of Gemini vision models.
-  /// gemini-3.8-flash is the active Google model for new API accounts.
+  /// Prioritized list of active, verified Gemini vision models.
+  /// gemini-3.7-flash and gemini-3.5-flash have been verified with HTTP 200 on this account.
   static const List<String> _candidateModels = [
+    'gemini-3.7-flash',
+    'gemini-3.5-flash',
+    'gemini-3.6-flash',
     'gemini-3.8-flash',
-    'gemini-3.0-flash',
-    'gemini-2.5-flash',
-    'gemini-2.0-flash',
-    'gemini-1.5-flash-latest',
-    'gemini-1.5-flash',
-    'gemini-1.5-pro',
+    'gemini-flash-latest',
+    'gemini-3-flash-preview',
+    'gemini-2.5-pro',
   ];
 
-  static String? _cachedWorkingModel;
+  static String? _cachedWorkingModel = 'gemini-3.7-flash';
 
   static const String _systemInstruction = '''
 You are an expert clinical pharmacist, pharmaceutical vision OCR specialist, and bilingual medical communicator.

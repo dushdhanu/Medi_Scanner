@@ -169,6 +169,8 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
                       padding: const EdgeInsets.all(4),
                       child: TabBar(
                         controller: _tabController,
+                        indicatorSize: TabBarIndicatorSize.tab,
+                        labelPadding: EdgeInsets.zero,
                         indicator: BoxDecoration(
                           color: isDark ? const Color(0xFF00696B) : Colors.white,
                           borderRadius: BorderRadius.circular(12),
@@ -184,35 +186,49 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
                         unselectedLabelColor: isDark ? const Color(0xFF8C9E9E) : const Color(0xFF5A6B6B),
                         tabs: [
                           Tab(
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.language_rounded, size: 18),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'සිංහල (Sinhala)',
-                                  style: GoogleFonts.notoSansSinhala(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                  ),
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.language_rounded, size: 16),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'සිංහල (Sinhala)',
+                                      style: GoogleFonts.notoSansSinhala(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13.5,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ],
+                              ),
                             ),
                           ),
                           Tab(
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.translate_rounded, size: 18),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'English',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                  ),
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.translate_rounded, size: 16),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'English',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13.5,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ],
+                              ),
                             ),
                           ),
                         ],
