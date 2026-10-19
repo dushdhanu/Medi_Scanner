@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/medicine_analysis_result.dart';
-import '../services/history_service.dart';
+import '../services/database_service.dart';
 import 'result_screen.dart';
 
 class HistoryScreen extends StatefulWidget {
@@ -16,6 +16,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
   List<MedicineAnalysisResult> _historyList = [];
   bool _isLoading = true;
   String _searchQuery = '';
+  bool _onlyFavorites = false;
+  int _totalCount = 0;
 
   @override
   void initState() {
@@ -25,15 +27,22 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   Future<void> _loadHistory() async {
     setState(() => _isLoading = true);
-    final list = await HistoryService.getHistory();
-    setState(() {
-      _historyList = list;
-      _isLoading = false;
-    });
+    final list = await DatabaseService.getAllMedicines(
+      searchQuery: _searchQuery,
+      onlyFavorites: _onlyFavorites,
+    );
+    final count = await DatabaseService.getMedicineCount();
+    if (mounted) {
+      setState(() {
+        _historyList = list;
+        _totalCount = count;
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _deleteItem(String id) async {
-    await HistoryService.deleteResult(id);
+    await DatabaseService.deleteMedicine(id);
     _loadHistory();
   }
 
@@ -41,8 +50,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Clear Scan History?'),
-        content: const Text('Are you sure you want to delete all saved medicine scans? This action cannot be undone.'),
+        title: const Text('Clear Medicine Cabinet?'),
+        content: const Text(
+          'Are you sure you want to permanently delete all records from your local phone SQLite database? This cannot be undone.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -58,7 +69,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
 
     if (confirmed == true) {
-      await HistoryService.clearHistory();
+      await DatabaseService.clearAll();
       _loadHistory();
     }
   }
@@ -72,25 +83,47 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    final filteredList = _historyList.where((item) {
-      if (_searchQuery.trim().isEmpty) return true;
-      final q = _searchQuery.toLowerCase();
-      return item.english.brandName.toLowerCase().contains(q) ||
-          item.sinhala.brandName.toLowerCase().contains(q) ||
-          item.english.genericName.toLowerCase().contains(q);
-    }).toList();
-
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'Scan History (පසුගිය ස්කෑන්)',
-          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Medicine Cabinet (ඖෂධ එකතුව)',
+              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            Row(
+              children: [
+                const Icon(Icons.storage_rounded, size: 12, color: Color(0xFF00696B)),
+                const SizedBox(width: 4),
+                Text(
+                  'Local SQLite DB • $_totalCount saved',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11,
+                    color: const Color(0xFF00696B),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
         actions: [
+          IconButton(
+            icon: Icon(
+              _onlyFavorites ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+              color: _onlyFavorites ? Colors.redAccent : null,
+            ),
+            tooltip: _onlyFavorites ? 'Show All' : 'Show Favorites Only',
+            onPressed: () {
+              setState(() => _onlyFavorites = !_onlyFavorites);
+              _loadHistory();
+            },
+          ),
           if (_historyList.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.delete_sweep_outlined),
-              tooltip: 'Clear History',
+              tooltip: 'Clear Cabinet',
               onPressed: _clearAll,
             ),
         ],
@@ -98,31 +131,34 @@ class _HistoryScreenState extends State<HistoryScreen> {
       body: Column(
         children: [
           // Search Bar
-          if (_historyList.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: TextField(
-                onChanged: (val) => setState(() => _searchQuery = val),
-                decoration: InputDecoration(
-                  hintText: 'Search by brand or active ingredient...',
-                  prefixIcon: const Icon(Icons.search_rounded, size: 20),
-                  filled: true,
-                  fillColor: isDark ? const Color(0xFF1B2424) : Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide(
-                      color: isDark ? const Color(0xFF2E3D3D) : const Color(0xFFD6E2E2),
-                    ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: TextField(
+              onChanged: (val) {
+                _searchQuery = val;
+                _loadHistory();
+              },
+              decoration: InputDecoration(
+                hintText: 'Search by brand or active ingredient (සිංහල/English)...',
+                hintStyle: const TextStyle(fontSize: 13),
+                prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                filled: true,
+                fillColor: isDark ? const Color(0xFF1B2424) : Colors.white,
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide(
+                    color: isDark ? const Color(0xFF2E3D3D) : const Color(0xFFD6E2E2),
                   ),
                 ),
               ),
             ),
+          ),
 
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : filteredList.isEmpty
+                : _historyList.isEmpty
                     ? Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -134,7 +170,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                 shape: BoxShape.circle,
                               ),
                               child: const Icon(
-                                Icons.history_rounded,
+                                Icons.medication_liquid_rounded,
                                 size: 48,
                                 color: Color(0xFF00696B),
                               ),
@@ -143,7 +179,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                             Text(
                               _searchQuery.isNotEmpty
                                   ? 'No matching medicine found'
-                                  : 'No Scanned Medicines Yet',
+                                  : _onlyFavorites
+                                      ? 'No Favorite Medicines Yet'
+                                      : 'No Saved Medicines Yet',
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 17,
                                 fontWeight: FontWeight.bold,
@@ -152,88 +190,150 @@ class _HistoryScreenState extends State<HistoryScreen> {
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              _searchQuery.isNotEmpty
-                                  ? 'Try searching with another keyword'
-                                  : 'Photograph a medicine from Home to save scans here.',
+                              'Scan any medicine to store it offline in SQLite.',
                               style: TextStyle(
                                 fontSize: 13,
-                                color: isDark ? const Color(0xFF8C9E9E) : const Color(0xFF687777),
+                                color: isDark ? const Color(0xFF8C9E9E) : const Color(0xFF6C7C7C),
                               ),
                             ),
                           ],
                         ),
                       )
-                    : ListView.builder(
+                    : ListView.separated(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        itemCount: filteredList.length,
+                        itemCount: _historyList.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 10),
                         itemBuilder: (context, index) {
-                          final item = filteredList[index];
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            child: ListTile(
-                              contentPadding: const EdgeInsets.all(12),
-                              leading: ClipRRect(
-                                borderRadius: BorderRadius.circular(10),
-                                child: item.imagePath != null && File(item.imagePath!).existsSync()
-                                    ? Image.file(
-                                        File(item.imagePath!),
-                                        width: 54,
-                                        height: 54,
-                                        fit: BoxFit.cover,
-                                      )
-                                    : Container(
-                                        width: 54,
-                                        height: 54,
-                                        color: const Color(0xFF00696B).withValues(alpha: 0.12),
-                                        child: const Icon(
-                                          Icons.medication_rounded,
-                                          color: Color(0xFF00696B),
-                                          size: 28,
-                                        ),
-                                      ),
+                          final item = _historyList[index];
+                          return Dismissible(
+                            key: Key(item.id),
+                            direction: DismissDirection.endToStart,
+                            background: Container(
+                              alignment: Alignment.centerRight,
+                              padding: const EdgeInsets.only(right: 20),
+                              decoration: BoxDecoration(
+                                color: Colors.redAccent,
+                                borderRadius: BorderRadius.circular(16),
                               ),
-                              title: Text(
-                                item.english.brandName,
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
+                              child: const Icon(Icons.delete_outline, color: Colors.white, size: 28),
+                            ),
+                            onDismissed: (_) => _deleteItem(item.id),
+                            child: Card(
+                              elevation: 0,
+                              color: isDark ? const Color(0xFF161F20) : Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                side: BorderSide(
+                                  color: isDark ? const Color(0xFF283636) : const Color(0xFFE2EDED),
                                 ),
                               ),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    item.sinhala.brandName,
-                                    style: GoogleFonts.notoSansSinhala(
-                                      fontSize: 13,
-                                      color: const Color(0xFF00696B),
-                                      fontWeight: FontWeight.w600,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(16),
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => ResultScreen(result: item),
                                     ),
+                                  );
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: Row(
+                                    children: [
+                                      // Image Thumbnail or Icon
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: (item.imagePath != null && File(item.imagePath!).existsSync())
+                                            ? Image.file(
+                                                File(item.imagePath!),
+                                                width: 58,
+                                                height: 58,
+                                                fit: BoxFit.cover,
+                                              )
+                                            : Container(
+                                                width: 58,
+                                                height: 58,
+                                                color: const Color(0xFF00696B).withValues(alpha: 0.1),
+                                                child: const Icon(
+                                                  Icons.medication_rounded,
+                                                  color: Color(0xFF00696B),
+                                                  size: 28,
+                                                ),
+                                              ),
+                                      ),
+                                      const SizedBox(width: 12),
+
+                                      // Medicine Details
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              item.english.brandName,
+                                              style: GoogleFonts.plusJakartaSans(
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.bold,
+                                                color: isDark ? Colors.white : const Color(0xFF191C1C),
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              item.sinhala.brandName,
+                                              style: GoogleFonts.notoSansSinhala(
+                                                fontSize: 12,
+                                                color: const Color(0xFF00696B),
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              '${item.english.genericName} • ${item.english.dosageStrength}',
+                                              style: TextStyle(
+                                                fontSize: 11.5,
+                                                color: isDark ? const Color(0xFF8C9E9E) : const Color(0xFF6C7C7C),
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              _formatDate(item.timestamp),
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                color: isDark ? const Color(0xFF6B7A7A) : const Color(0xFF94A3B8),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+
+                                      // Favorite button
+                                      FutureBuilder<bool>(
+                                        future: DatabaseService.isFavorite(item.id),
+                                        builder: (context, snapshot) {
+                                          final isFav = snapshot.data ?? false;
+                                          return IconButton(
+                                            icon: Icon(
+                                              isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                                              color: isFav ? Colors.redAccent : Colors.grey,
+                                              size: 20,
+                                            ),
+                                            onPressed: () async {
+                                              await DatabaseService.toggleFavorite(item.id, !isFav);
+                                              setState(() {});
+                                            },
+                                          );
+                                        },
+                                      ),
+                                    ],
                                   ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    '${item.english.dosageStrength} • ${_formatDate(item.timestamp)}',
-                                    style: TextStyle(
-                                      fontSize: 11.5,
-                                      color: isDark ? const Color(0xFF8C9E9E) : const Color(0xFF6C7C7C),
-                                    ),
-                                  ),
-                                ],
+                                ),
                               ),
-                              trailing: IconButton(
-                                icon: const Icon(Icons.delete_outline_rounded, size: 20),
-                                color: Colors.redAccent.withValues(alpha: 0.8),
-                                onPressed: () => _deleteItem(item.id),
-                              ),
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => ResultScreen(result: item),
-                                  ),
-                                );
-                              },
                             ),
                           );
                         },

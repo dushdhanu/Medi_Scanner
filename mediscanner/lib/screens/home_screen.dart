@@ -120,8 +120,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         _analysisStatus = 'Formatting bilingual insights (Sinhala & English)...';
       });
 
-      // Persist to local history
-      await HistoryService.saveResult(result);
+      // Persist to phone local SQLite database
+      await DatabaseService.insertMedicine(result);
 
       if (!mounted) return;
       setState(() => _isAnalyzing = false);
