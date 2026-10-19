@@ -16,13 +16,14 @@ class GeminiServiceException implements Exception {
 
 class GeminiService {
   /// Prioritized list of Gemini vision models.
-  /// Automatically tries the next model if one is retired or not found on the user's API endpoint.
+  /// gemini-3.8-flash is the active Google model for new API accounts.
   static const List<String> _candidateModels = [
+    'gemini-3.8-flash',
+    'gemini-3.0-flash',
     'gemini-2.5-flash',
     'gemini-2.0-flash',
     'gemini-1.5-flash-latest',
     'gemini-1.5-flash',
-    'gemini-2.0-flash-exp',
     'gemini-1.5-pro',
   ];
 
@@ -91,10 +92,25 @@ If the image is NOT a medicine, or is too blurry/dark to recognize anything, set
         ..._candidateModels.where((m) => m != _cachedWorkingModel),
       ];
     }
-    return _candidateModels;
+    return List<String>.from(_candidateModels);
   }
 
-  /// Analyze the medicine image using Gemini Multimodal Vision with automatic model fallback
+  /// Check whether an error message indicates an outdated, unavailable, or busy model
+  static bool _isModelUnavailableOrBusy(String msg) {
+    return msg.contains('not found') ||
+        msg.contains('not supported') ||
+        msg.contains('no longer available') ||
+        msg.contains('deprecated') ||
+        msg.contains('update your code') ||
+        msg.contains('503') ||
+        msg.contains('high demand') ||
+        msg.contains('unavailable') ||
+        msg.contains('server error') ||
+        msg.contains('overloaded') ||
+        msg.contains('404');
+  }
+
+  /// Analyze the medicine image using Gemini Multimodal Vision with automatic model fallback & busy retry
   static Future<MedicineAnalysisResult> analyzeMedicineImage({
     required Uint8List imageBytes,
     required String mimeType,
@@ -115,93 +131,118 @@ If the image is NOT a medicine, or is too blurry/dark to recognize anything, set
     final modelsToTry = _getModelsToTry();
     String? lastErrorMessage;
 
-    for (final modelName in modelsToTry) {
-      try {
-        final model = GenerativeModel(
-          model: modelName,
-          apiKey: apiKey,
-          generationConfig: GenerationConfig(
-            temperature: 0.15,
-            responseMimeType: 'application/json',
-          ),
-        );
+    int i = 0;
+    while (i < modelsToTry.length) {
+      final modelName = modelsToTry[i];
+      i++;
 
-        final promptText = TextPart(
-          'Analyze this medicine image thoroughly. Read all printed, engraved, or embossed text, identify the brand, active ingredients, dosage, formulation, indications, usage, side effects, precautions, and storage in both Sinhala and English as specified. Output pure JSON.',
-        );
-
-        final imagePart = DataPart(mimeType, imageBytes);
-
-        final response = await model.generateContent([
-          Content.text(_systemInstruction),
-          Content.multi([promptText, imagePart]),
-        ]);
-
-        final rawText = response.text;
-        if (rawText == null || rawText.trim().isEmpty) {
-          throw const GeminiServiceException(
-            'Gemini Vision returned an empty response. Please capture a clearer picture in better lighting.',
-            code: 'EMPTY_RESPONSE',
+      // Retry up to 3 times per model in case of temporary 503 High Demand spikes
+      for (int attempt = 0; attempt < 3; attempt++) {
+        try {
+          final model = GenerativeModel(
+            model: modelName,
+            apiKey: apiKey,
+            generationConfig: GenerationConfig(
+              temperature: 0.15,
+              responseMimeType: 'application/json',
+            ),
           );
-        }
 
-        final cleanedJsonString = _extractJson(rawText);
-        final dynamic decoded = jsonDecode(cleanedJsonString);
-
-        if (decoded is! Map<String, dynamic>) {
-          throw const GeminiServiceException(
-            'Unexpected data format returned from AI model. Please try again.',
-            code: 'INVALID_JSON_STRUCTURE',
+          final promptText = TextPart(
+            'Analyze this medicine image thoroughly. Read all printed, engraved, or embossed text, identify the brand, active ingredients, dosage, formulation, indications, usage, side effects, precautions, and storage in both Sinhala and English as specified. Output pure JSON.',
           );
-        }
 
-        // Cache working model for future calls
-        _cachedWorkingModel = modelName;
+          final imagePart = DataPart(mimeType, imageBytes);
 
-        return MedicineAnalysisResult.fromJson(
-          decoded,
-          imagePath: localImagePath,
-        );
-      } on GenerativeAIException catch (e) {
-        final msg = e.message.toLowerCase();
-        // If model not found or not supported for this version, try next candidate
-        if (msg.contains('not found') || msg.contains('not supported') || msg.contains('404')) {
-          lastErrorMessage = e.message;
-          continue;
-        }
+          final response = await model.generateContent([
+            Content.text(_systemInstruction),
+            Content.multi([promptText, imagePart]),
+          ]);
 
-        if (msg.contains('api_key') || msg.contains('unauthorized') || msg.contains('invalid api key')) {
-          throw const GeminiServiceException(
-            'The provided Google Gemini API key is invalid or unauthorized. Please verify your key in Settings.',
-            code: 'INVALID_API_KEY',
+          final rawText = response.text;
+          if (rawText == null || rawText.trim().isEmpty) {
+            throw const GeminiServiceException(
+              'Gemini Vision returned an empty response. Please capture a clearer picture in better lighting.',
+              code: 'EMPTY_RESPONSE',
+            );
+          }
+
+          final cleanedJsonString = _extractJson(rawText);
+          final dynamic decoded = jsonDecode(cleanedJsonString);
+
+          if (decoded is! Map<String, dynamic>) {
+            throw const GeminiServiceException(
+              'Unexpected data format returned from AI model. Please try again.',
+              code: 'INVALID_JSON_STRUCTURE',
+            );
+          }
+
+          // Cache working model for future calls
+          _cachedWorkingModel = modelName;
+
+          return MedicineAnalysisResult.fromJson(
+            decoded,
+            imagePath: localImagePath,
           );
-        } else if (msg.contains('quota') || msg.contains('resource_exhausted') || msg.contains('rate limit')) {
-          throw const GeminiServiceException(
-            'Gemini free tier quota exceeded or rate limit reached. Please wait a minute and retry.',
-            code: 'QUOTA_EXCEEDED',
-          );
-        } else {
+        } on GenerativeAIException catch (e) {
+          final msg = e.message.toLowerCase();
+
+          // If Google returns 503 / High Demand / Busy, wait briefly and retry
+          if (msg.contains('503') || msg.contains('high demand') || msg.contains('unavailable') || msg.contains('overloaded')) {
+            if (attempt < 2) {
+              await Future.delayed(Duration(milliseconds: 1500 * (attempt + 1)));
+              continue; // retry current model
+            }
+          }
+
+          // If model retired, no longer available, or still busy after retries, try next candidate model
+          if (_isModelUnavailableOrBusy(msg)) {
+            lastErrorMessage = e.message;
+
+            // If Google recommends a specific model in the error message, add it to the front
+            final matches = RegExp(r'models/([a-zA-Z0-9._-]+)').allMatches(e.message);
+            for (final m in matches) {
+              final suggested = m.group(1);
+              if (suggested != null && !modelsToTry.contains(suggested)) {
+                modelsToTry.insert(i, suggested);
+              }
+            }
+            break; // break retry loop to try next model in candidate list
+          }
+
+          if (msg.contains('api_key') || msg.contains('unauthorized') || msg.contains('invalid api key')) {
+            throw const GeminiServiceException(
+              'The provided Google Gemini API key is invalid or unauthorized. Please verify your key in Settings.',
+              code: 'INVALID_API_KEY',
+            );
+          } else if (msg.contains('quota') || msg.contains('resource_exhausted') || msg.contains('rate limit')) {
+            throw const GeminiServiceException(
+              'Gemini free tier quota exceeded or rate limit reached. Please wait a minute and retry.',
+              code: 'QUOTA_EXCEEDED',
+            );
+          } else {
+            throw GeminiServiceException(
+              'Gemini Vision error: ${e.message}',
+              code: 'GEMINI_ERROR',
+            );
+          }
+        } on FormatException catch (e) {
           throw GeminiServiceException(
-            'Gemini Vision error: ${e.message}',
-            code: 'GEMINI_ERROR',
+            'Failed to parse medical insight data: ${e.message}. Please try scanning again with better focus.',
+            code: 'PARSE_ERROR',
+          );
+        } catch (e) {
+          if (e is GeminiServiceException) rethrow;
+          final errorStr = e.toString().toLowerCase();
+          if (_isModelUnavailableOrBusy(errorStr)) {
+            lastErrorMessage = e.toString();
+            break; // try next candidate model
+          }
+          throw GeminiServiceException(
+            'Failed to connect to Gemini Vision: $e. Please check your internet connection and try again.',
+            code: 'NETWORK_OR_UNKNOWN',
           );
         }
-      } on FormatException catch (e) {
-        throw GeminiServiceException(
-          'Failed to parse medical insight data: ${e.message}. Please try scanning again with better focus.',
-          code: 'PARSE_ERROR',
-        );
-      } catch (e) {
-        if (e is GeminiServiceException) rethrow;
-        final errorStr = e.toString().toLowerCase();
-        if (errorStr.contains('not found') || errorStr.contains('404')) {
-          lastErrorMessage = e.toString();
-          continue;
-        }
-        throw GeminiServiceException(
-          'Failed to connect to Gemini Vision: $e. Please check your internet connection and try again.',
-          code: 'NETWORK_OR_UNKNOWN',
-        );
       }
     }
 
@@ -253,7 +294,11 @@ Finish with a clear medical disclaimer.
     final modelsToTry = _getModelsToTry();
     String? lastError;
 
-    for (final modelName in modelsToTry) {
+    int i = 0;
+    while (i < modelsToTry.length) {
+      final modelName = modelsToTry[i];
+      i++;
+
       try {
         final model = GenerativeModel(
           model: modelName,
@@ -275,14 +320,22 @@ Finish with a clear medical disclaimer.
         }
       } on GenerativeAIException catch (e) {
         final msg = e.message.toLowerCase();
-        if (msg.contains('not found') || msg.contains('not supported') || msg.contains('404')) {
+        if (_isModelUnavailableError(msg)) {
           lastError = e.message;
+
+          final matches = RegExp(r'models/([a-zA-Z0-9._-]+)').allMatches(e.message);
+          for (final m in matches) {
+            final suggested = m.group(1);
+            if (suggested != null && !modelsToTry.contains(suggested)) {
+              modelsToTry.insert(i, suggested);
+            }
+          }
           continue;
         }
         rethrow;
       } catch (e) {
         final msg = e.toString().toLowerCase();
-        if (msg.contains('not found') || msg.contains('404')) {
+        if (_isModelUnavailableError(msg)) {
           lastError = e.toString();
           continue;
         }
