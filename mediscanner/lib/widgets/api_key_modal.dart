@@ -165,7 +165,7 @@ class _ApiKeyModalState extends State<ApiKeyModal> {
                           ),
                         ),
                         Text(
-                          'Powered by Google gemini-1.5-flash',
+                          'Powered by Google Multimodal Vision AI',
                           style: TextStyle(
                             fontSize: 12,
                             color: isDark ? const Color(0xFF8C9E9E) : const Color(0xFF5F6E6E),
