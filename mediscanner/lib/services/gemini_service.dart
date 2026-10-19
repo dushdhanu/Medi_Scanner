@@ -299,47 +299,55 @@ Finish with a clear medical disclaimer.
       final modelName = modelsToTry[i];
       i++;
 
-      try {
-        final model = GenerativeModel(
-          model: modelName,
-          apiKey: apiKey,
-        );
+      for (int attempt = 0; attempt < 3; attempt++) {
+        try {
+          final model = GenerativeModel(
+            model: modelName,
+            apiKey: apiKey,
+          );
 
-        final response = await model.generateContent([
-          Content.text(prompt),
-          Content.multi([
-            DataPart('image/jpeg', bytesA),
-            DataPart('image/jpeg', bytesB),
-          ]),
-        ]);
+          final response = await model.generateContent([
+            Content.text(prompt),
+            Content.multi([
+              DataPart('image/jpeg', bytesA),
+              DataPart('image/jpeg', bytesB),
+            ]),
+          ]);
 
-        final text = response.text;
-        if (text != null && text.trim().isNotEmpty) {
-          _cachedWorkingModel = modelName;
-          return text;
-        }
-      } on GenerativeAIException catch (e) {
-        final msg = e.message.toLowerCase();
-        if (_isModelUnavailableError(msg)) {
-          lastError = e.message;
-
-          final matches = RegExp(r'models/([a-zA-Z0-9._-]+)').allMatches(e.message);
-          for (final m in matches) {
-            final suggested = m.group(1);
-            if (suggested != null && !modelsToTry.contains(suggested)) {
-              modelsToTry.insert(i, suggested);
+          final text = response.text;
+          if (text != null && text.trim().isNotEmpty) {
+            _cachedWorkingModel = modelName;
+            return text;
+          }
+        } on GenerativeAIException catch (e) {
+          final msg = e.message.toLowerCase();
+          if (msg.contains('503') || msg.contains('high demand') || msg.contains('unavailable')) {
+            if (attempt < 2) {
+              await Future.delayed(Duration(milliseconds: 1500 * (attempt + 1)));
+              continue;
             }
           }
-          continue;
+          if (_isModelUnavailableOrBusy(msg)) {
+            lastError = e.message;
+
+            final matches = RegExp(r'models/([a-zA-Z0-9._-]+)').allMatches(e.message);
+            for (final m in matches) {
+              final suggested = m.group(1);
+              if (suggested != null && !modelsToTry.contains(suggested)) {
+                modelsToTry.insert(i, suggested);
+              }
+            }
+            break;
+          }
+          rethrow;
+        } catch (e) {
+          final msg = e.toString().toLowerCase();
+          if (_isModelUnavailableOrBusy(msg)) {
+            lastError = e.toString();
+            break;
+          }
+          rethrow;
         }
-        rethrow;
-      } catch (e) {
-        final msg = e.toString().toLowerCase();
-        if (_isModelUnavailableError(msg)) {
-          lastError = e.toString();
-          continue;
-        }
-        rethrow;
       }
     }
 

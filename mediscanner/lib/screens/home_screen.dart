@@ -32,6 +32,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   void initState() {
     super.initState();
     _checkApiKey();
+    _retrieveLostData();
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
@@ -43,6 +44,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     WidgetsBinding.instance.addPostFrameCallback((_) {
       MedicalTermsOnboardingModal.showIfNeeded(context);
     });
+  }
+
+  /// Retrieve photo if Android killed the Activity while camera was open
+  Future<void> _retrieveLostData() async {
+    try {
+      final LostDataResponse response = await _picker.retrieveLostData();
+      if (response.isEmpty) return;
+      if (response.file != null) {
+        _processImageFile(response.file!);
+      }
+    } catch (_) {}
   }
 
   @override
@@ -67,13 +79,23 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     try {
       final XFile? pickedFile = await _picker.pickImage(
         source: source,
-        maxWidth: 1600, // Optimized for Gemini Multimodal OCR clarity & payload speed
-        maxHeight: 1600,
-        imageQuality: 85,
+        maxWidth: 1400, // Balanced for fast upload & crisp OCR
+        maxHeight: 1400,
+        imageQuality: 80,
       );
 
       if (pickedFile == null) return; // User cancelled
+      await _processImageFile(pickedFile);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isAnalyzing = false);
+      _showErrorDialog(e.toString());
+    }
+  }
 
+  /// Process the medicine photograph through Gemini Multimodal Vision and display results
+  Future<void> _processImageFile(XFile pickedFile) async {
+    try {
       setState(() {
         _isAnalyzing = true;
         _analysisStatus = 'Preparing medicine photograph...';
