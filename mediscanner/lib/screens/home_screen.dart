@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/medicine_analysis_result.dart';
 import '../services/api_key_service.dart';
+import '../services/database_service.dart';
 import '../services/gemini_service.dart';
 import '../services/history_service.dart';
 import '../widgets/api_key_modal.dart';
