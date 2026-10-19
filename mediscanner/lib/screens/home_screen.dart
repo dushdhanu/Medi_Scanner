@@ -358,11 +358,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
                 // Supported Medicine Types Section
                 _buildSupportedTypesCard(isDark),
-                const SizedBox(height: 16),
-
-                // Quick Demo Sample Button
-                _buildDemoButton(isDark),
-                const SizedBox(height: 28),
+                const SizedBox(height: 24),
               ],
             ),
           ),
