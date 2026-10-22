@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:share_plus/share_plus.dart';
+import '../models/family_profile.dart';
 import '../models/medicine_analysis_result.dart';
 import '../services/database_service.dart';
 import '../services/notification_service.dart';
@@ -28,6 +29,7 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
   final TtsService _ttsService = TtsService();
   late MedicineAnalysisResult _currentResult;
   late int _pillCount;
+  List<FamilyProfile> _familyProfiles = FamilyProfile.defaultProfiles;
 
   @override
   void initState() {
@@ -40,6 +42,9 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
       if (mounted) setState(() {});
     };
     NotificationService().scheduleExpiryAlerts(_currentResult);
+    FamilyProfile.getAllProfiles().then((list) {
+      if (mounted) setState(() => _familyProfiles = list);
+    });
   }
 
   Future<void> _updatePillCount(int newCount) async {
@@ -144,6 +149,67 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
     if (result != null) {
       await _updatePillCount(result);
     }
+  }
+
+  Future<void> _showProfileSelectionSheet() async {
+    final isSinhala = _tabController.index == 0;
+    await showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.group_rounded, color: Color(0xFF00696B)),
+                    const SizedBox(width: 8),
+                    Text(
+                      isSinhala ? 'පවුලේ සාමාජිකයා තෝරන්න' : 'Assign to Family Member',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                ..._familyProfiles.map((p) {
+                  final isCurrent = _currentResult.profileId == p.id;
+                  return ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: p.color.withValues(alpha: 0.15),
+                      child: Icon(p.icon, color: p.color, size: 22),
+                    ),
+                    title: Text(
+                      '${p.nameSi} (${p.nameEn})',
+                      style: TextStyle(
+                        fontWeight: isCurrent ? FontWeight.bold : FontWeight.w500,
+                        color: isCurrent ? p.color : null,
+                      ),
+                    ),
+                    trailing: isCurrent ? Icon(Icons.check_circle_rounded, color: p.color) : null,
+                    onTap: () async {
+                      Navigator.pop(context);
+                      setState(() {
+                        _currentResult = _currentResult.copyWith(profileId: p.id);
+                      });
+                      await DatabaseService.updateMedicineProfile(_currentResult.id, p.id);
+                    },
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -505,6 +571,47 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
                     fontSize: 12,
                     color: isDark ? const Color(0xFF90A1A1) : const Color(0xFF5A6A6A),
                   ),
+                ),
+                const SizedBox(height: 6),
+                // Phase 7: Assigned Family Member Profile Chip
+                Builder(
+                  builder: (context) {
+                    final assigned = _familyProfiles.firstWhere(
+                      (p) => p.id == _currentResult.profileId,
+                      orElse: () => FamilyProfile.defaultProfiles.first,
+                    );
+                    return InkWell(
+                      onTap: _showProfileSelectionSheet,
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: assigned.color.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: assigned.color.withValues(alpha: 0.35),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(assigned.icon, size: 13, color: assigned.color),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${assigned.nameSi} (${assigned.nameEn})',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: assigned.color,
+                              ),
+                            ),
+                            const SizedBox(width: 3),
+                            Icon(Icons.arrow_drop_down, size: 16, color: assigned.color),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),

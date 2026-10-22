@@ -18,7 +18,20 @@ class FamilyProfile {
   });
 
   Color get color => Color(colorValue);
-  IconData get icon => IconData(iconCodePoint, fontFamily: 'MaterialIcons');
+  IconData get icon {
+    switch (id) {
+      case 'father':
+        return Icons.elderly_rounded;
+      case 'mother':
+        return Icons.elderly_woman_rounded;
+      case 'child':
+        return Icons.child_care_rounded;
+      case 'self':
+        return Icons.person_rounded;
+      default:
+        return Icons.face_rounded;
+    }
+  }
 
   Map<String, dynamic> toJson() {
     return {
