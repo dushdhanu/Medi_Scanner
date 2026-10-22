@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:share_plus/share_plus.dart';
 import '../models/family_profile.dart';
 import '../models/medicine_analysis_result.dart';
 import '../services/biometric_service.dart';
@@ -290,6 +291,54 @@ class _HistoryScreenState extends State<HistoryScreen> {
     return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} • ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
   }
 
+  void _shareDoctorSummary() {
+    if (_historyList.isEmpty) return;
+
+    final assigned = _selectedProfileId == 'all'
+        ? 'All Family Members (සමස්ත පවුල)'
+        : _familyProfiles.firstWhere(
+            (p) => p.id == _selectedProfileId,
+            orElse: () => FamilyProfile.defaultProfiles.first,
+          ).nameEn;
+
+    final buffer = StringBuffer();
+    buffer.writeln('📋 CLINICAL MEDICATION SUMMARY (වෛද්‍ය උපදෙස් සඳහා)');
+    buffer.writeln('====================================================');
+    buffer.writeln('👤 Patient Profile: $assigned');
+    buffer.writeln('📅 Date: ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}');
+    buffer.writeln('💊 Active Medications: ${_historyList.length}');
+    buffer.writeln('----------------------------------------------------');
+
+    for (int i = 0; i < _historyList.length; i++) {
+      final item = _historyList[i];
+      buffer.writeln('\n${i + 1}. ${item.english.brandName} (${item.english.dosageStrength})');
+      buffer.writeln('   • Generic: ${item.english.genericName}');
+      buffer.writeln('   • Directions: ${item.english.usageInstructions}');
+      buffer.writeln('   • සිංහලෙන්: ${item.sinhala.usageInstructions}');
+      if (item.expiryDate != null) {
+        buffer.writeln('   • Expiry Date: ${item.expiryDate} (${item.isExpired ? "⚠️ EXPIRED" : "Valid"})');
+      }
+      if (item.remainingPills != null) {
+        buffer.writeln('   • Remaining Inventory: ${item.remainingPills} pills left');
+      }
+      if (item.english.spcGenericAlternative != null && item.english.spcGenericAlternative!.isNotEmpty) {
+        buffer.writeln('   • SPC / Osu Sala Generic: ${item.english.spcGenericAlternative}');
+      }
+      if (item.english.dietaryWarnings.isNotEmpty) {
+        buffer.writeln('   • Dietary Caution: ${item.english.dietaryWarnings.join("; ")}');
+      }
+    }
+
+    buffer.writeln('\n====================================================');
+    buffer.writeln('🏥 Prepared for Clinical Consultation via MedScan AI');
+    buffer.writeln('⚠️ Disclaimer: Always verify with attending registered medical doctor.');
+
+    Share.share(
+      buffer.toString(),
+      subject: 'Doctor Medication Summary - $assigned',
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -343,6 +392,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ),
           if (_historyList.isNotEmpty && !_isLocked)
             IconButton(
+              icon: const Icon(Icons.share_rounded),
+              tooltip: 'Doctor WhatsApp Summary (වෛද්‍යවරයාට යැවීමට)',
+              onPressed: _shareDoctorSummary,
+            ),
+          if (_historyList.isNotEmpty && !_isLocked)
+            IconButton(
               icon: const Icon(Icons.delete_sweep_outlined),
               tooltip: 'Clear Cabinet',
               onPressed: _clearAll,
@@ -355,6 +410,41 @@ class _HistoryScreenState extends State<HistoryScreen> {
               children: [
                 // Phase 7: Multi-Member Family Profile Filter Bar
                 _buildProfileFilterBar(isDark),
+
+                // Phase 8.3: 1-Tap Doctor WhatsApp Export Bar
+                if (_historyList.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    child: InkWell(
+                      onTap: _shareDoctorSummary,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF25D366).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFF25D366).withValues(alpha: 0.35)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.send_to_mobile_rounded, color: Color(0xFF128C7E), size: 18),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                '1-Tap Doctor WhatsApp Summary (${_historyList.length} medicines)',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF128C7E),
+                                ),
+                              ),
+                            ),
+                            const Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFF128C7E), size: 13),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
 
                 // Search Bar
                 Padding(

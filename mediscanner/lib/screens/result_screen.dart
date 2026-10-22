@@ -938,6 +938,57 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
           ),
         ),
 
+        // Phase 8.1: SPC / Rajya Osu Sala Generic Alternative Card
+        if (data.spcGenericAlternative != null && data.spcGenericAlternative!.trim().isNotEmpty)
+          MedicineDetailCard(
+            title: isSinhala 
+                ? 'රාජ්‍ය ඔසු සල / SPC ලාභදායී ආදේශක (Generic Alternative)' 
+                : 'Rajya Osu Sala / SPC Generic Alternative',
+            icon: Icons.local_pharmacy_rounded,
+            accentColor: const Color(0xFF2E7D32),
+            isSinhala: isSinhala,
+            badgeText: isSinhala ? 'ලාභදායී ආදේශක' : 'Affordable SPC',
+            customContent: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2E7D32).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF2E7D32).withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.verified_rounded, color: Color(0xFF2E7D32), size: 26),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          data.spcGenericAlternative!,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.white : const Color(0xFF1B5E20),
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          isSinhala 
+                              ? 'රාජ්‍ය ඖෂධ නීතිගත සංස්ථාව (SPC) මඟින් සහතික කළ ගුණාත්මක, අඩුමිල විකල්පයකි.'
+                              : 'State Pharmaceuticals Corporation (SPC) certified affordable generic equivalent.',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            color: isDark ? const Color(0xFFA5D6A7) : const Color(0xFF2E7D32),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
         // 4. Clinical Uses / Indications
         MedicineDetailCard(
           title: isSinhala ? 'භාවිතය සඳහා රෝග තත්ත්ව (Clinical Uses)' : 'Clinical Indications & Uses',
@@ -946,6 +997,19 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
           isSinhala: isSinhala,
           bulletPoints: data.clinicalUses,
         ),
+
+        // Phase 8.2: Food & Beverage Contraindication Badges
+        if (data.dietaryWarnings.isNotEmpty)
+          MedicineDetailCard(
+            title: isSinhala 
+                ? 'ආහාර සහ පාන වර්ග අවවාද (Food & Drink Warnings)' 
+                : 'Dietary & Beverage Contraindications',
+            icon: Icons.no_food_rounded,
+            accentColor: const Color(0xFFD84315),
+            isSinhala: isSinhala,
+            badgeText: isSinhala ? 'ආහාර අවවාද' : 'Dietary Alert',
+            bulletPoints: data.dietaryWarnings,
+          ),
 
         // 5. Usage Instructions
         MedicineDetailCard(

@@ -10,7 +10,8 @@ class MedicineLanguageData {
   final List<String> sideEffects;
   final List<String> precautions;
   final String storageGuidelines;
-  final String? unreadableNotice;
+  final String? spcGenericAlternative;
+  final List<String> dietaryWarnings;
 
   const MedicineLanguageData({
     required this.brandName,
@@ -22,6 +23,8 @@ class MedicineLanguageData {
     required this.precautions,
     required this.storageGuidelines,
     this.unreadableNotice,
+    this.spcGenericAlternative,
+    this.dietaryWarnings = const [],
   });
 
   factory MedicineLanguageData.fromJson(Map<String, dynamic> json) {
@@ -35,6 +38,8 @@ class MedicineLanguageData {
       precautions: _parseList(json['precautions']),
       storageGuidelines: json['storageGuidelines']?.toString() ?? 'Store in a cool, dry place away from direct sunlight.',
       unreadableNotice: json['unreadableNotice']?.toString(),
+      spcGenericAlternative: json['spcGenericAlternative']?.toString(),
+      dietaryWarnings: _parseList(json['dietaryWarnings']),
     );
   }
 
@@ -49,6 +54,8 @@ class MedicineLanguageData {
       'precautions': precautions,
       'storageGuidelines': storageGuidelines,
       'unreadableNotice': unreadableNotice,
+      'spcGenericAlternative': spcGenericAlternative,
+      'dietaryWarnings': dietaryWarnings,
     };
   }
 
