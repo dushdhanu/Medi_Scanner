@@ -225,6 +225,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 final en = enController.text.trim();
                 final si = siController.text.trim();
                 if (en.isNotEmpty) {
+                  final nav = Navigator.of(context);
                   final newProfile = FamilyProfile(
                     id: 'custom_${DateTime.now().millisecondsSinceEpoch}',
                     nameEn: en,
@@ -239,7 +240,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       _familyProfiles = refreshed;
                       _selectedProfileId = newProfile.id;
                     });
-                    Navigator.pop(context);
+                    nav.pop();
                     _loadHistory();
                   }
                 }

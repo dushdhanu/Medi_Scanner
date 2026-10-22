@@ -24,7 +24,7 @@ This document outlines the strategic engineering roadmap and feature specificati
 | :--- | :--- | :--- | :--- |
 | **Phase 5** | **Smart Expiry & Pill Inventory** | AI EXP Date Extractor, Expiry Alerts, Pill Count & Refill Alarms | ✅ Completed |
 | **Phase 6** | **Handwritten Prescription Scanner** | Doctor Cursive OCR, Multi-Med Extraction, Batch Dose Scheduler | ✅ Completed |
-| **Phase 7** | **Family Profiles & Biometric Security** | Multi-Member Cabinets, Fingerprint / Face Unlock (`local_auth`) | 🟡 Medium |
+| **Phase 7** | **Family Profiles & Biometric Security** | Multi-Member Cabinets, Fingerprint / Face Unlock (`local_auth`) | ✅ Completed |
 | **Phase 8** | **Sri Lankan Health-Tech Integrations** | SPC / Osu Sala Generic Alternatives, Food Warning Badges, Doctor Export | 🟢 Enhancement |
 
 ---
