@@ -154,7 +154,7 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
   }
 
   void _shareResult() {
-    final res = widget.result;
+    final res = _currentResult;
     final isSinhalaTab = _tabController.index == 0;
     final data = isSinhalaTab ? res.sinhala : res.english;
 
@@ -211,7 +211,7 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final res = widget.result;
+    final res = _currentResult;
 
     return Scaffold(
       appBar: AppBar(
@@ -264,7 +264,11 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
                   children: [
                     // Top Overview Card
                     _buildOverviewHeader(isDark),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 10),
+
+                    // Phase 5: Expiry & Pill Inventory Card
+                    _buildExpiryAndInventoryCard(isDark),
+                    const SizedBox(height: 10),
 
                     // Uncertainty Warning if not recognized or blurry
                     if (!res.isMedicine || res.confidenceRating.toLowerCase() == 'uncertain')
@@ -394,7 +398,7 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
   }
 
   Widget _buildOverviewHeader(bool isDark) {
-    final res = widget.result;
+    final res = _currentResult;
     final confColor = _getConfidenceColor(res.confidenceRating);
 
     return Container(
@@ -504,6 +508,234 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
                 ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExpiryAndInventoryCard(bool isDark) {
+    final isSinhala = _tabController.index == 0;
+    final expDate = _currentResult.expiryDate;
+    final isExp = _currentResult.isExpired;
+    final days = _currentResult.daysUntilExpiry;
+    final batchNo = _currentResult.batchNumber;
+
+    Color badgeColor;
+    IconData badgeIcon;
+    String badgeText;
+
+    if (expDate == null || expDate.trim().isEmpty) {
+      badgeColor = Colors.grey;
+      badgeIcon = Icons.help_outline_rounded;
+      badgeText = isSinhala ? 'කල් ඉකුත්වීමේ දිනය හඳුනාගෙන නැත' : 'EXP: Not visible on packaging';
+    } else if (isExp) {
+      badgeColor = const Color(0xFFD32F2F);
+      badgeIcon = Icons.error_outline_rounded;
+      badgeText = _currentResult.getExpiryStatusString(isSinhala: isSinhala);
+    } else if (days != null && days <= 30) {
+      badgeColor = const Color(0xFFF57C00);
+      badgeIcon = Icons.warning_amber_rounded;
+      badgeText = _currentResult.getExpiryStatusString(isSinhala: isSinhala);
+    } else {
+      badgeColor = const Color(0xFF2E7D32);
+      badgeIcon = Icons.check_circle_outline_rounded;
+      badgeText = _currentResult.getExpiryStatusString(isSinhala: isSinhala);
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF161F20) : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isExp 
+              ? Colors.redAccent.withValues(alpha: 0.5) 
+              : (days != null && days <= 30 
+                  ? Colors.orangeAccent.withValues(alpha: 0.5) 
+                  : (isDark ? const Color(0xFF283636) : const Color(0xFFE2EDED))),
+          width: isExp || (days != null && days <= 30) ? 1.5 : 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Row 1: Expiry & Batch Number
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Expiry Section
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(badgeIcon, size: 16, color: badgeColor),
+                        const SizedBox(width: 6),
+                        Text(
+                          isSinhala ? 'කල් ඉකුත්වීමේ තත්ත්වය' : 'Expiry Status',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: badgeColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 5),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: badgeColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        badgeText,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: badgeColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Batch No Badge
+              if (batchNo != null && batchNo.trim().isNotEmpty) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF202C2C) : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: isDark ? const Color(0xFF334444) : const Color(0xFFCBD5E1),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        'Batch / B.No',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: isDark ? const Color(0xFF90A1A1) : const Color(0xFF64748B),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        batchNo,
+                        style: GoogleFonts.firaCode(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : const Color(0xFF1E293B),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 10),
+            child: Divider(height: 1),
+          ),
+
+          // Row 2: Pill Inventory Counter & Refill Alarm
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF00696B).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.inventory_2_outlined, color: Color(0xFF00696B), size: 20),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isSinhala ? 'පෙති ගණන (Pill Inventory)' : 'Pill Inventory',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : const Color(0xFF191C1C),
+                      ),
+                    ),
+                    Text(
+                      _pillCount <= 2
+                          ? (isSinhala ? '⚠️ තොග අවසන් වෙමින් පවතී!' : '⚠️ Low Stock - Refill!')
+                          : (isSinhala ? 'ඉතිරිව ඇති පෙති ප්‍රමාණය' : 'Remaining in blister pack'),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: _pillCount <= 2 ? Colors.redAccent : (isDark ? const Color(0xFF8C9E9E) : const Color(0xFF64748B)),
+                        fontWeight: _pillCount <= 2 ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Pill Counter controls
+              Container(
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF202C2C) : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: _pillCount <= 2 
+                        ? Colors.redAccent.withValues(alpha: 0.4) 
+                        : (isDark ? const Color(0xFF334444) : const Color(0xFFCBD5E1)),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Decrement (-1 Dose)
+                    IconButton(
+                      icon: const Icon(Icons.remove_circle_outline, size: 18),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                      constraints: const BoxConstraints(),
+                      tooltip: 'Take 1 Pill (පෙත්තක් බිව්වා)',
+                      color: Colors.redAccent,
+                      onPressed: _pillCount > 0 ? () => _updatePillCount(_pillCount - 1) : null,
+                    ),
+                    // Current Count (tap to edit)
+                    InkWell(
+                      onTap: _showSetPillCountDialog,
+                      borderRadius: BorderRadius.circular(6),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        child: Text(
+                          '$_pillCount',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: _pillCount <= 2 ? Colors.redAccent : (isDark ? Colors.white : const Color(0xFF00696B)),
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Increment (+1)
+                    IconButton(
+                      icon: const Icon(Icons.add_circle_outline, size: 18),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                      constraints: const BoxConstraints(),
+                      tooltip: 'Add 1 Pill',
+                      color: const Color(0xFF00696B),
+                      onPressed: () => _updatePillCount(_pillCount + 1),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),

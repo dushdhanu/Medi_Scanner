@@ -229,13 +229,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
                               ),
                               child: InkWell(
                                 borderRadius: BorderRadius.circular(16),
-                                onTap: () {
-                                  Navigator.push(
+                                onTap: () async {
+                                  await Navigator.push(
                                     context,
                                     MaterialPageRoute(
                                       builder: (context) => ResultScreen(result: item),
                                     ),
                                   );
+                                  _loadHistory();
                                 },
                                 child: Padding(
                                   padding: const EdgeInsets.all(12),
@@ -300,6 +301,93 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
                                             ),
+                                            const SizedBox(height: 5),
+
+                                            // Expiry & Pill Inventory Chips
+                                            Wrap(
+                                              spacing: 6,
+                                              runSpacing: 4,
+                                              children: [
+                                                if (item.expiryDate != null && item.expiryDate!.trim().isNotEmpty) ...[
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                    decoration: BoxDecoration(
+                                                      color: item.isExpired
+                                                          ? Colors.red.withValues(alpha: 0.15)
+                                                          : ((item.daysUntilExpiry != null && item.daysUntilExpiry! <= 30)
+                                                              ? Colors.orange.withValues(alpha: 0.15)
+                                                              : const Color(0xFF2E7D32).withValues(alpha: 0.12)),
+                                                      borderRadius: BorderRadius.circular(6),
+                                                    ),
+                                                    child: Row(
+                                                      mainAxisSize: MainAxisSize.min,
+                                                      children: [
+                                                        Icon(
+                                                          item.isExpired
+                                                              ? Icons.error_outline_rounded
+                                                              : ((item.daysUntilExpiry != null && item.daysUntilExpiry! <= 30)
+                                                                  ? Icons.warning_amber_rounded
+                                                                  : Icons.event_available_rounded),
+                                                          size: 11,
+                                                          color: item.isExpired
+                                                              ? Colors.redAccent
+                                                              : ((item.daysUntilExpiry != null && item.daysUntilExpiry! <= 30)
+                                                                  ? Colors.orangeAccent
+                                                                  : const Color(0xFF2E7D32)),
+                                                        ),
+                                                        const SizedBox(width: 3),
+                                                        Text(
+                                                          item.isExpired 
+                                                              ? 'Expired (${item.expiryDate})' 
+                                                              : 'EXP: ${item.expiryDate}',
+                                                          style: TextStyle(
+                                                            fontSize: 10,
+                                                            fontWeight: FontWeight.bold,
+                                                            color: item.isExpired
+                                                                ? Colors.redAccent
+                                                                : ((item.daysUntilExpiry != null && item.daysUntilExpiry! <= 30)
+                                                                    ? Colors.orangeAccent
+                                                                    : const Color(0xFF2E7D32)),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ],
+
+                                                if (item.remainingPills != null) ...[
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                    decoration: BoxDecoration(
+                                                      color: (item.remainingPills! <= 2)
+                                                          ? Colors.red.withValues(alpha: 0.15)
+                                                          : const Color(0xFF00696B).withValues(alpha: 0.12),
+                                                      borderRadius: BorderRadius.circular(6),
+                                                    ),
+                                                    child: Row(
+                                                      mainAxisSize: MainAxisSize.min,
+                                                      children: [
+                                                        Icon(
+                                                          Icons.inventory_2_outlined,
+                                                          size: 11,
+                                                          color: (item.remainingPills! <= 2) ? Colors.redAccent : const Color(0xFF00696B),
+                                                        ),
+                                                        const SizedBox(width: 3),
+                                                        Text(
+                                                          '${item.remainingPills} pills',
+                                                          style: TextStyle(
+                                                            fontSize: 10,
+                                                            fontWeight: FontWeight.bold,
+                                                            color: (item.remainingPills! <= 2) ? Colors.redAccent : const Color(0xFF00696B),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ],
+                                              ],
+                                            ),
+
                                             const SizedBox(height: 4),
                                             Text(
                                               _formatDate(item.timestamp),
