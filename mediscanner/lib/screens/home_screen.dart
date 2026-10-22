@@ -5,7 +5,6 @@ import '../models/medicine_analysis_result.dart';
 import '../services/api_key_service.dart';
 import '../services/database_service.dart';
 import '../services/gemini_service.dart';
-import '../services/history_service.dart';
 import '../widgets/api_key_modal.dart';
 import '../widgets/medical_terms_onboarding_modal.dart';
 import '../widgets/scan_guide_sheet.dart';
@@ -211,16 +210,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
-  /// Launch Demo Sample to inspect the full Dual-Tab Sinhala/English UI instantly
-  void _openSampleDemo() {
-    final sample = MedicineAnalysisResult.createSample();
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ResultScreen(result: sample),
-      ),
-    );
-  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -676,62 +666,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
-  Widget _buildDemoButton(bool isDark) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF182222) : const Color(0xFFF1F8F8),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark ? const Color(0xFF2A3838) : const Color(0xFFD4E5E5),
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: const Color(0xFF0288D1).withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(
-              Icons.science_outlined,
-              color: Color(0xFF0288D1),
-              size: 22,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Explore Sample Analysis',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : const Color(0xFF1E293B),
-                  ),
-                ),
-                Text(
-                  'Preview dual-tab Sinhala & English results instantly',
-                  style: TextStyle(
-                    fontSize: 11.5,
-                    color: isDark ? const Color(0xFF8C9E9E) : const Color(0xFF64748B),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          TextButton(
-            onPressed: _openSampleDemo,
-            child: const Text('Try Demo', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-  }
+
 
   Widget _buildAnalyzingOverlay(bool isDark) {
     return Container(

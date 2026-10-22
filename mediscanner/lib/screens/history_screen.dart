@@ -202,7 +202,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     : ListView.separated(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         itemCount: _historyList.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 10),
+                        separatorBuilder: (context, index) => const SizedBox(height: 10),
                         itemBuilder: (context, index) {
                           final item = _historyList[index];
                           return Dismissible(
