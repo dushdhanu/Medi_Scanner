@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
-import '../models/medicine_analysis_result.dart';
 import '../services/api_key_service.dart';
 import '../services/database_service.dart';
 import '../services/gemini_service.dart';
@@ -11,6 +10,7 @@ import '../widgets/scan_guide_sheet.dart';
 import 'emergency_directory_screen.dart';
 import 'history_screen.dart';
 import 'interaction_checker_screen.dart';
+import 'prescription_result_screen.dart';
 import 'result_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -137,6 +137,118 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       setState(() => _isAnalyzing = false);
       _showErrorDialog(e.toString());
     }
+  }
+
+  /// Start scanning and deciphering a doctor's handwritten prescription
+  Future<void> _startPrescriptionScan(ImageSource source) async {
+    try {
+      final XFile? file = await _picker.pickImage(
+        source: source,
+        maxWidth: 1800,
+        maxHeight: 1800,
+        imageQuality: 90,
+      );
+      if (file == null) return;
+
+      setState(() {
+        _isAnalyzing = true;
+        _analysisStatus = 'Deciphering Doctor Handwriting... / බෙහෙත් තිණ්ඩුව කියවමින් පවතී';
+      });
+
+      final bytes = await file.readAsBytes();
+      final result = await GeminiService.analyzePrescriptionImage(
+        imageBytes: bytes,
+        imagePath: file.path,
+      );
+
+      if (!mounted) return;
+      setState(() => _isAnalyzing = false);
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PrescriptionResultScreen(result: result),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isAnalyzing = false);
+      _showErrorDialog(e.toString());
+    }
+  }
+
+  void _showPrescriptionSourceSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF6750A4).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.assignment_outlined, color: Color(0xFF6750A4), size: 24),
+                    ),
+                    const SizedBox(width: 10),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Scan Doctor Prescription',
+                          style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          'වෛද්‍ය බෙහෙත් තිණ්ඩු ස්කෑන් කරන්න',
+                          style: GoogleFonts.notoSansSinhala(fontSize: 12, color: const Color(0xFF6750A4), fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Color(0xFFE8DEF8),
+                    child: Icon(Icons.photo_camera_rounded, color: Color(0xFF6750A4)),
+                  ),
+                  title: const Text('Capture with Camera (කැමරාවෙන් ඡායාරූප ගන්න)', style: TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: const Text('Position full A4/A5 slip in bright light'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _startPrescriptionScan(ImageSource.camera);
+                  },
+                ),
+                const SizedBox(height: 4),
+                ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Color(0xFFE8DEF8),
+                    child: Icon(Icons.photo_library_rounded, color: Color(0xFF6750A4)),
+                  ),
+                  title: const Text('Choose from Gallery (ගැලරියෙන් තෝරන්න)', style: TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: const Text('Select existing photo of prescription'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _startPrescriptionScan(ImageSource.gallery);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Future<bool> _showApiKeyRequiredPrompt() async {
@@ -336,7 +448,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
                 // Main Capture Action Buttons
                 _buildCaptureButtons(isDark),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
+
+                // Phase 6: Handwritten Doctor's Prescription Scanner Card
+                _buildPrescriptionScannerCard(isDark),
+                const SizedBox(height: 14),
 
                 // Phase 2: Drug Interaction Checker Card
                 _buildInteractionCheckerCard(isDark),
@@ -545,6 +661,105 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           bottom: !isTop ? const BorderSide(color: color, width: thickness) : BorderSide.none,
           left: isLeft ? const BorderSide(color: color, width: thickness) : BorderSide.none,
           right: !isLeft ? const BorderSide(color: color, width: thickness) : BorderSide.none,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPrescriptionScannerCard(bool isDark) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E1A29) : const Color(0xFFF7F2FA),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isDark ? const Color(0xFF49454F) : const Color(0xFFE8DEF8),
+          width: 1.2,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: _showPrescriptionSourceSheet,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF6750A4),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(
+                    Icons.assignment_turned_in_rounded,
+                    color: Colors.white,
+                    size: 26,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF6750A4).withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Text(
+                              'PHASE 6 • OCR',
+                              style: TextStyle(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF6750A4),
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Doctor Handwriting',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              color: isDark ? const Color(0xFFD0BCFF) : const Color(0xFF6750A4),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Prescription Scanner (බෙහෙත් තිණ්ඩු)',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : const Color(0xFF1D1B20),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'වෛද්‍ය අත්අකුරු කියවා මාත්‍රා මතක් කිරීම් සකසන්න',
+                        style: GoogleFonts.notoSansSinhala(
+                          fontSize: 11.5,
+                          color: isDark ? const Color(0xFFCAC4D0) : const Color(0xFF49454F),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 16,
+                  color: Color(0xFF6750A4),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
