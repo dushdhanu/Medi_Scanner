@@ -76,6 +76,7 @@ class MedicineAnalysisResult {
   final String? expiryDate; // e.g. "12/2027", "2026-10", "EXP: 05/26"
   final String? batchNumber; // e.g. "B12894", "BN: 4022"
   final int? remainingPills; // For pill inventory tracker
+  final String profileId; // 'self', 'father', 'mother', 'child', or custom profile ID
   final MedicineLanguageData sinhala;
   final MedicineLanguageData english;
   final String generalWarning;
@@ -91,6 +92,7 @@ class MedicineAnalysisResult {
     this.expiryDate,
     this.batchNumber,
     this.remainingPills,
+    this.profileId = 'self',
     required this.sinhala,
     required this.english,
     required this.generalWarning,
@@ -187,6 +189,7 @@ class MedicineAnalysisResult {
       expiryDate: json['expiryDate']?.toString(),
       batchNumber: json['batchNumber']?.toString(),
       remainingPills: json['remainingPills'] is int ? json['remainingPills'] as int : int.tryParse(json['remainingPills']?.toString() ?? ''),
+      profileId: json['profileId']?.toString() ?? 'self',
       sinhala: MedicineLanguageData.fromJson(
         (json['sinhala'] is Map<String, dynamic>) 
             ? json['sinhala'] as Map<String, dynamic> 
@@ -214,6 +217,7 @@ class MedicineAnalysisResult {
       'expiryDate': expiryDate,
       'batchNumber': batchNumber,
       'remainingPills': remainingPills,
+      'profileId': profileId,
       'sinhala': sinhala.toJson(),
       'english': english.toJson(),
       'generalWarning': generalWarning,
@@ -231,6 +235,7 @@ class MedicineAnalysisResult {
     String? expiryDate,
     String? batchNumber,
     int? remainingPills,
+    String? profileId,
     MedicineLanguageData? sinhala,
     MedicineLanguageData? english,
     String? generalWarning,
@@ -246,6 +251,7 @@ class MedicineAnalysisResult {
       expiryDate: expiryDate ?? this.expiryDate,
       batchNumber: batchNumber ?? this.batchNumber,
       remainingPills: remainingPills ?? this.remainingPills,
+      profileId: profileId ?? this.profileId,
       sinhala: sinhala ?? this.sinhala,
       english: english ?? this.english,
       generalWarning: generalWarning ?? this.generalWarning,

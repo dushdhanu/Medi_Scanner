@@ -6,7 +6,7 @@ import 'history_service.dart';
 
 class DatabaseService {
   static const String _dbName = 'mediscan_vault.db';
-  static const int _dbVersion = 2;
+  static const int _dbVersion = 3;
   static const String tableMedicines = 'medicines';
 
   static Database? _database;
@@ -41,6 +41,7 @@ class DatabaseService {
             expiry_date TEXT,
             batch_no TEXT,
             remaining_pills INTEGER,
+            profile_id TEXT DEFAULT 'self',
             raw_json TEXT NOT NULL,
             created_at INTEGER NOT NULL,
             is_favorite INTEGER DEFAULT 0,
@@ -51,6 +52,7 @@ class DatabaseService {
         // Create indexes for instant lightning-fast search by brand/generic names
         await db.execute('CREATE INDEX idx_medicines_brand ON $tableMedicines (brand_name_en, brand_name_si)');
         await db.execute('CREATE INDEX idx_medicines_created ON $tableMedicines (created_at DESC)');
+        await db.execute('CREATE INDEX idx_medicines_profile ON $tableMedicines (profile_id)');
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -58,6 +60,12 @@ class DatabaseService {
             await db.execute('ALTER TABLE $tableMedicines ADD COLUMN expiry_date TEXT');
             await db.execute('ALTER TABLE $tableMedicines ADD COLUMN batch_no TEXT');
             await db.execute('ALTER TABLE $tableMedicines ADD COLUMN remaining_pills INTEGER');
+          } catch (_) {}
+        }
+        if (oldVersion < 3) {
+          try {
+            await db.execute("ALTER TABLE $tableMedicines ADD COLUMN profile_id TEXT DEFAULT 'self'");
+            await db.execute('CREATE INDEX IF NOT EXISTS idx_medicines_profile ON $tableMedicines (profile_id)');
           } catch (_) {}
         }
       },
@@ -106,8 +114,10 @@ class DatabaseService {
     MedicineAnalysisResult result, {
     String? notes,
     int? remainingPills,
+    String? profileId,
   }) async {
     final db = await database;
+    final assignedProfile = profileId ?? result.profileId;
     await db.insert(
       tableMedicines,
       {
@@ -123,7 +133,8 @@ class DatabaseService {
         'expiry_date': result.expiryDate,
         'batch_no': result.batchNumber,
         'remaining_pills': remainingPills ?? result.remainingPills,
-        'raw_json': result.toJsonString(),
+        'profile_id': assignedProfile,
+        'raw_json': result.copyWith(profileId: assignedProfile).toJsonString(),
         'created_at': result.timestamp.millisecondsSinceEpoch,
         'is_favorite': 0,
         'personal_notes': notes,
@@ -133,6 +144,32 @@ class DatabaseService {
 
     // Also sync with HistoryService for fallback
     await HistoryService.saveResult(result);
+  }
+
+  /// Update assigned family profile for a medicine
+  static Future<void> updateMedicineProfile(String id, String profileId) async {
+    final db = await database;
+    final rows = await db.query(tableMedicines, where: 'id = ?', whereArgs: [id]);
+    String? updatedRawJson;
+    if (rows.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(rows.first['raw_json'] as String) as Map<String, dynamic>;
+        decoded['profileId'] = profileId;
+        updatedRawJson = jsonEncode(decoded);
+      } catch (_) {}
+    }
+
+    final updateData = <String, dynamic>{'profile_id': profileId};
+    if (updatedRawJson != null) {
+      updateData['raw_json'] = updatedRawJson;
+    }
+
+    await db.update(
+      tableMedicines,
+      updateData,
+      where: 'id = ?',
+      whereArgs: [id],
+    );
   }
 
   /// Update remaining pill count for inventory tracking
@@ -161,10 +198,11 @@ class DatabaseService {
     );
   }
 
-  /// Retrieve all saved medicines with optional search and favorite filter
+  /// Retrieve all saved medicines with optional search, favorite filter, and profile filter
   static Future<List<MedicineAnalysisResult>> getAllMedicines({
     String? searchQuery,
     bool onlyFavorites = false,
+    String? profileId,
   }) async {
     final db = await database;
     String? where;
@@ -175,6 +213,11 @@ class DatabaseService {
 
     if (onlyFavorites) {
       conditions.add('is_favorite = 1');
+    }
+
+    if (profileId != null && profileId.isNotEmpty && profileId != 'all') {
+      conditions.add('profile_id = ?');
+      args.add(profileId);
     }
 
     if (searchQuery != null && searchQuery.trim().isNotEmpty) {
@@ -204,6 +247,9 @@ class DatabaseService {
         final decoded = jsonDecode(rawJson) as Map<String, dynamic>;
         if (row['remaining_pills'] != null) {
           decoded['remainingPills'] = row['remaining_pills'];
+        }
+        if (row['profile_id'] != null) {
+          decoded['profileId'] = row['profile_id'];
         }
         if (row['expiry_date'] != null && (decoded['expiryDate'] == null || decoded['expiryDate'].toString().isEmpty)) {
           decoded['expiryDate'] = row['expiry_date'];
