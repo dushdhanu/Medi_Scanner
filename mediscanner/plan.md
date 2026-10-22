@@ -1,126 +1,140 @@
-# 📋 MedScan AI — Development & Feature Upgrade Plan (plan.md)
+# 📋 MedScan AI — Development Roadmap & Feature Plan v2.0 (plan.md)
 
-This document outlines the strategic roadmap, planned architectural updates, and new feature enhancements for **MedScan AI**. Features are categorized into distinct phases based on priority, clinical utility, and implementation complexity.
+This document outlines the strategic engineering roadmap and feature specification for **MedScan AI v2.0**. It builds upon the verified foundation (Gemini 3.7 Vision, Bilingual Sinhala/English OCR, SQLite Local Database, and Audio Voice Reader) to transform the application into an all-in-one clinical health-tech assistant.
 
 ---
 
-## 🧭 Milestone Overview
+## 🏆 Current Progress & Implemented Milestone (v1.0 - Done)
 
-| Phase | Focus Area | Key Deliverables | Status |
+- [x] **Core Vision AI**: Multimodal scanning via Google Gemini (`gemini-3.7-flash` / `gemini-3.5-flash`) with automatic 503 backoff retry.
+- [x] **Bilingual Clinical Extraction**: 7 core medical fields formatted in pure Sinhala (සිංහල) and English.
+- [x] **Voice Reader (TTS)**: High-fidelity audio playback bar in `ResultScreen`.
+- [x] **Hospital-Grade PDF Export**: Clinical summary generation and printing via `pdf` and `printing`.
+- [x] **Permanent Local SQLite Database**: Offline medicine storage (`mediscan_vault.db`) via `sqflite` with real-time search & favorites.
+- [x] **Drug-to-Drug Interaction Checker**: Dual-medicine comparison screen for adverse interaction risks.
+- [x] **Dosage Reminders**: Scheduled notifications for Morning, Afternoon, and Night alarms.
+- [x] **Sri Lanka Emergency Directory**: 1-tap dialers for 1990 Suwa Seriya, National Poisons Centre (011-2686143), and NHSL.
+- [x] **UI & Memory Optimization**: `android:largeHeap="true"` and camera `retrieveLostData()` crash prevention.
+
+---
+
+## 🧭 Milestone Overview (v2.0)
+
+| Phase | Focus Area | Key Deliverables | Priority |
 | :--- | :--- | :--- | :--- |
-| **Phase 1** | **Accessibility & User Experience** | Sinhala & English TTS, PDF Export, Scan Flashlight | 🟡 Next Up |
-| **Phase 2** | **Patient Adherence & Clinical Safety** | Dosage Reminder Alarms, Drug Interaction Checker | ⚪ Planned |
-| **Phase 3** | **Offline Support & Localization** | On-device ML Kit OCR fallback, Emergency Directory | ⚪ Planned |
-| **Phase 4** | **Production & Security Architecture** | Backend API Gateway, Firebase Auth, Store Compliance | ⚪ Planned |
+| **Phase 5** | **Smart Expiry & Pill Inventory** | AI EXP Date Extractor, Expiry Alerts, Pill Count & Refill Alarms | 🔴 High |
+| **Phase 6** | **Handwritten Prescription Scanner** | Doctor Cursive OCR, Multi-Med Extraction, Batch Dose Scheduler | 🔴 High |
+| **Phase 7** | **Family Profiles & Biometric Security** | Multi-Member Cabinets, Fingerprint / Face Unlock (`local_auth`) | 🟡 Medium |
+| **Phase 8** | **Sri Lankan Health-Tech Integrations** | SPC / Osu Sala Generic Alternatives, Food Warning Badges, Doctor Export | 🟢 Enhancement |
 
 ---
 
-## 🚀 Phase 1: Accessibility & User Experience (High Priority)
+## 📅 Phase 5: Smart Expiry & Pill Inventory (කල් ඉකුත්වීමේ අනතුරු ඇඟවීම්)
 
-### 1.1 Text-to-Speech (TTS) Voice Reader (හඬින් කියවීම)
-* **Goal**: Enable elderly or visually impaired patients to listen to medicine instructions in Sinhala or English with a single tap.
-* **Target Packages**: `flutter_tts: ^4.2.2`
-* **Implementation Plan**:
-  - Add TTS audio player controls at the top of both the Sinhala and English tabs in `ResultScreen`.
-  - Add individual "Listen" buttons next to crucial cards (Usage Instructions, Precautions, Side Effects).
-  - Configure Sinhala (`si-LK` or fallback phonetic engine) and English (`en-US`) voice profiles.
-  - Implement play, pause, stop, and speech rate adjustment sliders.
+### 5.1 AI Expiry Date & Batch Number Extractor
+* **Goal**: Automatically read `EXP`, `MFD`, and `Batch No` printed on blister strips, boxes, or bottle rims and store them in the phone's database.
+* **Architecture**:
+  - Update Gemini prompt to identify expiry dates across varied global formats (`MM/YY`, `EXP: 12/2027`, `MAY 28`).
+  - Add `expiry_date INTEGER` and `batch_no TEXT` columns to SQLite table `medicines`.
+  - Calculate days remaining until expiry.
 
-### 1.2 PDF Clinical Summary Export (වෛද්‍ය වාර්තා PDF)
-* **Goal**: Generate formatted, printable PDF medical summaries for patients to present to their physician or pharmacist.
-* **Target Packages**: `pdf: ^3.11.1`, `printing: ^5.13.2`
-* **Implementation Plan**:
-  - Build a clean medical PDF template with patient metadata, medicine photo, brand, active compounds, and dosage schedule.
-  - Support bilingual PDF rendering (embedding Noto Sans Sinhala TTF fonts).
-  - Provide 1-tap "Save to Files" and "Print Report" action in the result screen.
+### 5.2 Automated Expiry Push Notifications
+* **Goal**: Prevent accidental consumption of expired pharmaceuticals.
+* **Architecture**:
+  - Automatically schedule local push notifications via `flutter_local_notifications`:
+    - **Alert 1**: 30 days before expiration (*"Your Panadol Extra will expire in 30 days"*).
+    - **Alert 2**: 7 days before expiration (*"Warning: Medicine expiring this week. Discard safely."*).
+  - Highlight expiring items in the Medicine Cabinet with a distinct Amber/Red badge.
 
-### 1.3 Camera Flashlight & Real-Time Focus Assist
-* **Goal**: Improve OCR accuracy in low-light environments and prevent reflective foil glare.
-* **Target Packages**: Integrated with `camera` or `image_picker` camera intents.
-* **Implementation Plan**:
-  - Add camera torch/flashlight toggle overlay during photo capture.
-  - Add on-screen gridlines showing optimal pill alignment and framing guide.
+### 5.3 Pill Inventory Counter & Refill Alarm
+* **Goal**: Track remaining tablet count and alert patients before running out.
+* **Architecture**:
+  - User specifies starting count (e.g. 10 tablets).
+  - Tapping "Mark Dose Taken" automatically decrements the inventory.
+  - When remaining pills $\le 2$, triggers a refill alert: *"Panadol Extra running low — visit your pharmacy"*.
 
 ---
 
-## 💊 Phase 2: Patient Adherence & Clinical Safety (Medium Priority)
+## 📝 Phase 6: Handwritten Doctor's Prescription Scanner (බෙහෙත් තිණ්ඩු OCR)
 
-### 2.1 Smart Dosage Reminders & Alarms (බෙහෙත් වේලාවන් මතක් කිරීම්)
-* **Goal**: Automatically convert AI-extracted dosage intervals into scheduled device alarms and push notifications.
-* **Target Packages**: `flutter_local_notifications: ^18.0.1`, `timezone: ^0.10.0`
-* **Implementation Plan**:
-  - After scanning a medicine (e.g., "1 tablet every 8 hours after meals"), prompt user: *"Set daily reminders for this medication?"*.
-  - User selects meal times (Breakfast, Lunch, Dinner, Bedtime).
-  - System schedules persistent recurring local alarms that fire even when the app is closed.
-  - Track taken doses with a "Mark as Taken" button in notifications.
+### 6.1 Prescription Mode Viewfinder
+* **Goal**: Dedicated capture mode optimized for A4/A5 prescription papers and doctor slips.
+* **Architecture**:
+  - New "Prescription Scanner" card on `HomeScreen`.
+  - Document perspective overlay with high-contrast document filter.
 
-### 2.2 Multi-Medicine Drug Interaction Checker (ඖෂධ අන්තර්ක්‍රියා පරීක්ෂාව)
-* **Goal**: Prevent dangerous drug-drug interactions when taking multiple prescriptions concurrently.
-* **Implementation Plan**:
-  - Add a **"Compare / Check Interaction"** mode in `HomeScreen`.
-  - Allow scanning 2 or more medicines in sequence.
-  - Send multimodal prompt to Gemini: *"Analyze these 2 medicines. Identify contraindications, adverse interactions, or increased toxicity risks if taken concurrently."*
-  - Display an **Interaction Risk Meter**: `Safe (Green)`, `Caution (Yellow)`, `High Risk / Contraindicated (Red)`.
+### 6.2 Gemini Cursive Medical Handwriting Decoder
+* **Goal**: Accurately decipher doctors' cursive handwriting and Latin clinical abbreviations.
+* **Architecture**:
+  - Specialized multimodal prompt tailored for medical prescription recognition:
+    - Identifies each drug line-by-line.
+    - Decodes frequency abbreviations: `o.d.` (daily), `b.d.` (twice daily), `t.d.s.` (thrice daily), `q.d.s.` (four times daily), `p.r.n.` (as needed), `nocte` (at night).
+    - Decodes duration (e.g. `x 5/7` = 5 days, `x 1/12` = 1 month).
+  - Returns structured JSON array of all medicines in both Sinhala and English.
 
-### 2.3 Expiry Date Tracker & Medicine Cabinet
-* **Goal**: Catalog scanned medicines in a virtual "Medicine Cabinet" and alert users before expiry.
-* **Implementation Plan**:
-  - Prompt vision AI to specifically extract Batch Number and Expiration Date (EXP / B.No).
-  - Store active medicines in a local database (`sqflite` or `hive`).
-  - Send notifications 30 days and 7 days prior to medicine expiration.
+### 6.3 1-Tap Batch Dose Scheduler
+* **Goal**: Set up an entire prescription's reminder alarms with a single click.
+* **Architecture**:
+  - Review screen presenting the scanned prescription checklist.
+  - User confirms meal times; system schedules recurring notification alarms for all prescribed medications simultaneously.
 
 ---
 
-## 🏥 Phase 3: Offline Support & Local Directory (Enhancement)
+## 👨‍👩‍👧‍👦 Phase 7: Family Health Profiles & Biometric Security (පවුලේ සාමාජිකයන් සහ ආරක්ෂාව)
 
-### 3.1 Offline OCR Fallback via Google ML Kit
-* **Goal**: Provide basic brand and text identification even when the device has no internet connection.
-* **Target Packages**: `google_mlkit_text_recognition: ^0.14.0`
-* **Implementation Plan**:
-  - Detect network connectivity using `connectivity_plus`.
-  - When offline: run on-device ML Kit OCR to identify raw text, brand name, and dosage numbers.
-  - Cache common Sri Lankan essential medicines locally (e.g., Paracetamol, Amoxicillin, Metformin, Losartan).
-  - Queue full multimodal Gemini analysis to run automatically once network connectivity is restored.
+### 7.1 Multi-Member Family Cabinets
+* **Goal**: Prevent mixing up elderly parents', children's, and personal medications.
+* **Architecture**:
+  - Create custom profiles: e.g. **තාත්තා (Father)**, **අම්මා (Mother)**, **මම (Self)**, **බබා (Baby)**.
+  - Store `profile_id` in SQLite database.
+  - Quick-switch profile filter tabs in `HistoryScreen`.
 
-### 3.2 Sri Lanka Emergency & Pharmacy Helpline Directory
-* **Goal**: Instant access to emergency clinical poison centers and verified pharmacies.
-* **Target Packages**: `url_launcher: ^6.3.1`
-* **Implementation Plan**:
-  - Dedicated Emergency Card in Home Drawer:
-    - **National Poisons Information Centre (Colombo)**: `011-2686143` (1-tap dial).
-    - **1990 Suwa Seriya Ambulance Service**: `1990` (1-tap dial).
-    - **Government Medical Information**: `1959`.
-  - Google Maps integration to navigate to the nearest registered pharmacy.
+### 7.2 Biometric App Lock (Fingerprint & Face Unlock)
+* **Goal**: Ensure confidential patient health records and prescription histories remain private.
+* **Target Package**: `local_auth: ^2.3.0`
+* **Architecture**:
+  - Settings toggle: "Enable Biometric Security".
+  - Prompts device fingerprint or face recognition upon launching the Medicine Cabinet.
 
 ---
 
-## 🔒 Phase 4: Production, Security & Play Store Release
+## 🇱🇰 Phase 8: Sri Lankan Health-Tech Integrations (ලංකාවේ ඖෂධ සහ ආහාර ගැටීම්)
 
-### 4.1 Backend Proxy Architecture (API Key Security)
-* **Goal**: Protect Gemini API keys and enforce rate limiting before public release on Google Play Store & Apple App Store.
-* **Implementation Plan**:
-  - Deploy a lightweight serverless backend proxy (Firebase Cloud Functions / Google Cloud Run / Node.js).
-  - Client sends image payload with secure app check tokens (`firebase_app_check`).
-  - Backend securely invokes Gemini 1.5 Flash using environment secrets.
-  - Prevents reverse-engineering or quota abuse of developer API keys.
+### 8.1 SPC / Rajya Osu Sala Generic Alternatives (ලාභදායී ආදේශක ඖෂධ)
+* **Goal**: Help patients find affordable, high-quality generic alternatives when branded medicines are costly or out of stock.
+* **Architecture**:
+  - AI identifies the active chemical compound (e.g. *Augmentin $\rightarrow$ Co-Amoxiclav*).
+  - Recommends approved Sri Lankan SPC (State Pharmaceuticals Corporation) / Osu Sala equivalents.
 
-### 4.2 Medical Compliance & Legal Disclaimer Onboarding
-* **Goal**: Protect developers from medical liability and adhere to Google Play Medical Apps Policy.
-* **Implementation Plan**:
-  - Add a one-time onboarding Terms of Service & Medical Disclaimer screen on first app launch.
-  - User must actively accept: *"I acknowledge MedScan AI is an educational assistance tool and not a substitute for professional medical diagnosis or prescription."*
+### 8.2 Food & Beverage Contraindication Badges
+* **Goal**: Visually highlight critical dietary cautions alongside usage instructions.
+* **Architecture**:
+  - Visual iconography on `ResultScreen`:
+    - 🥛 **Dairy / Milk**: Avoid with certain tetracyclines / fluoroquinolones.
+    - ☕ **Tea / Coffee**: Avoid within 2 hours of Iron supplements.
+    - 🍷 **Alcohol**: Strict contraindication with Metronidazole / sedatives.
+    - 🍽️ **Meal Timing**: Before meals, With meals, or After meals.
+
+### 8.3 1-Tap Doctor WhatsApp / Email Summary
+* **Goal**: Instantly export active prescriptions to a doctor or clinic prior to consultation.
+* **Architecture**:
+  - Compiles all active medications in SQLite into an encrypted summary PDF.
+  - Uses `share_plus` to launch WhatsApp / Email with pre-filled clinical details.
 
 ---
 
-## 🛠️ Implementation Checklist
+## 🛠️ Step-by-Step Execution Plan
 
-- [x] **Task 1.1**: Integrated `flutter_tts` and built Sinhala/English Voice Reader bar in `result_screen.dart` via `TtsService`.
-- [x] **Task 1.2**: Added `pdf` and `printing` to generate and print hospital-grade clinical summary PDFs via `PdfExportService`.
-- [x] **Task 1.3**: Added camera flash/torch assistance and photography guidelines in `ScanGuideSheet` and `home_screen.dart`.
-- [x] **Task 2.1**: Implemented `flutter_local_notifications` and `ReminderDialog` for scheduled Morning/Afternoon/Night dosage alarms.
-- [x] **Task 2.2**: Built Multi-Medicine Drug Interaction Checker screen (`interaction_checker_screen.dart`) powered by Gemini Vision.
-- [x] **Task 2.3**: Built virtual Medicine Cabinet local offline storage & search via `history_screen.dart` and `HistoryService`.
-- [x] **Task 3.1**: Built offline safe sample simulation & cached history fallback for when internet is unavailable.
-- [x] **Task 3.2**: Added 1-tap Sri Lankan emergency contact dialers (National Poisons Centre, 1990 Suwa Seriya, and nearby pharmacies) via `emergency_directory_screen.dart`.
-- [x] **Task 4.1**: Configured encrypted local storage for Gemini API keys with instant runtime override via `api_key_service.dart`.
-- [x] **Task 4.2**: Added first-launch Medical Terms & Legal Disclaimer onboarding sheet via `medical_terms_onboarding_modal.dart`.
+```mermaid
+graph TD
+    A[Phase 5: Expiry & Pill Tracker] --> B[Phase 6: Prescription Scanner]
+    B --> C[Phase 7: Family Profiles & Biometrics]
+    C --> D[Phase 8: Sri Lankan Integrations]
+```
+
+### Next Implementation Steps:
+1. **Step 1**: Expand SQLite schema in `database_service.dart` with `expiry_date`, `batch_no`, and `pill_count`.
+2. **Step 2**: Update `gemini_service.dart` prompt to extract expiry dates and dietary contraindications.
+3. **Step 3**: Build Expiry Notification Scheduler and Expiry Badge in Medicine Cabinet.
+4. **Step 4**: Introduce Prescription Scanner mode with handwriting OCR.
+5. **Step 5**: Integrate `local_auth` for Biometric Lock and Family Profiles.

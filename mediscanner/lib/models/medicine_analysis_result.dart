@@ -73,6 +73,9 @@ class MedicineAnalysisResult {
   final String confidenceRating; // 'High', 'Moderate', 'Low', 'Uncertain'
   final String packageType; // 'Tablet/Capsule', 'Blister Pack', 'Syrup Bottle', 'Ointment Tube', 'Other'
   final String identifiedManufacturer;
+  final String? expiryDate; // e.g. "12/2027", "2026-10", "EXP: 05/26"
+  final String? batchNumber; // e.g. "B12894", "BN: 4022"
+  final int? remainingPills; // For pill inventory tracker
   final MedicineLanguageData sinhala;
   final MedicineLanguageData english;
   final String generalWarning;
@@ -85,10 +88,87 @@ class MedicineAnalysisResult {
     required this.confidenceRating,
     required this.packageType,
     required this.identifiedManufacturer,
+    this.expiryDate,
+    this.batchNumber,
+    this.remainingPills,
     required this.sinhala,
     required this.english,
     required this.generalWarning,
   });
+
+  /// Parse expiry date string into a DateTime object if valid
+  DateTime? get parsedExpiryDate {
+    if (expiryDate == null || expiryDate!.trim().isEmpty) return null;
+    final clean = expiryDate!.replaceAll(RegExp(r'[^\d/\-]'), '').trim();
+
+    // Try MM/YYYY or MM/YY
+    if (clean.contains('/')) {
+      final parts = clean.split('/');
+      if (parts.length == 2) {
+        final month = int.tryParse(parts[0]);
+        var year = int.tryParse(parts[1]);
+        if (month != null && year != null) {
+          if (year < 100) year += 2000;
+          return DateTime(year, month + 1, 0); // End of that month
+        }
+      } else if (parts.length == 3) {
+        // DD/MM/YYYY
+        final day = int.tryParse(parts[0]);
+        final month = int.tryParse(parts[1]);
+        var year = int.tryParse(parts[2]);
+        if (day != null && month != null && year != null) {
+          if (year < 100) year += 2000;
+          return DateTime(year, month, day);
+        }
+      }
+    }
+
+    // Try ISO YYYY-MM or YYYY-MM-DD
+    final iso = DateTime.tryParse(clean);
+    if (iso != null) return iso;
+
+    return null;
+  }
+
+  /// Whether the medicine has passed its expiration date
+  bool get isExpired {
+    final exp = parsedExpiryDate;
+    if (exp == null) return false;
+    return DateTime.now().isAfter(exp);
+  }
+
+  /// Days remaining until expiration (negative if already expired)
+  int? get daysUntilExpiry {
+    final exp = parsedExpiryDate;
+    if (exp == null) return null;
+    return exp.difference(DateTime.now()).inDays;
+  }
+
+  /// Human-readable expiration status in Sinhala / English
+  String getExpiryStatusString({bool isSinhala = false}) {
+    if (expiryDate == null || expiryDate!.trim().isEmpty) {
+      return isSinhala ? 'කල් ඉකුත්වීමේ දිනය සටහන්ව නැත' : 'Expiry date not visible';
+    }
+    final days = daysUntilExpiry;
+    if (days == null) {
+      return 'EXP: $expiryDate';
+    }
+    if (days < 0) {
+      final absDays = days.abs();
+      return isSinhala 
+          ? '⚠️ කල් ඉකුත් වී ඇත (දින $absDays කට පෙර)'
+          : '⚠️ Expired ($absDays days ago)';
+    } else if (days <= 30) {
+      return isSinhala 
+          ? '⚠️ දින $days කින් කල් ඉකුත් වේ!'
+          : '⚠️ Expiring in $days days!';
+    } else {
+      final months = (days / 30).round();
+      return isSinhala 
+          ? 'තව මාස $months කින් කල් ඉකුත් වේ ($expiryDate)'
+          : 'Expires in ~$months months ($expiryDate)';
+    }
+  }
 
   factory MedicineAnalysisResult.fromJson(Map<String, dynamic> json, {String? imagePath}) {
     final now = DateTime.now();
@@ -104,6 +184,9 @@ class MedicineAnalysisResult {
       confidenceRating: json['confidenceRating']?.toString() ?? 'Moderate',
       packageType: json['packageType']?.toString() ?? 'Medicine Package',
       identifiedManufacturer: json['identifiedManufacturer']?.toString() ?? 'Unspecified',
+      expiryDate: json['expiryDate']?.toString(),
+      batchNumber: json['batchNumber']?.toString(),
+      remainingPills: json['remainingPills'] is int ? json['remainingPills'] as int : int.tryParse(json['remainingPills']?.toString() ?? ''),
       sinhala: MedicineLanguageData.fromJson(
         (json['sinhala'] is Map<String, dynamic>) 
             ? json['sinhala'] as Map<String, dynamic> 
@@ -128,6 +211,9 @@ class MedicineAnalysisResult {
       'confidenceRating': confidenceRating,
       'packageType': packageType,
       'identifiedManufacturer': identifiedManufacturer,
+      'expiryDate': expiryDate,
+      'batchNumber': batchNumber,
+      'remainingPills': remainingPills,
       'sinhala': sinhala.toJson(),
       'english': english.toJson(),
       'generalWarning': generalWarning,

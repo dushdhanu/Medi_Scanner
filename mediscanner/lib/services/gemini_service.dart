@@ -56,6 +56,8 @@ You MUST respond strictly with a valid JSON object matching the following struct
   "confidenceRating": "High" | "Moderate" | "Low" | "Uncertain",
   "packageType": "Tablet/Capsule" | "Blister Pack" | "Syrup Bottle" | "Ointment Tube" | "Other",
   "identifiedManufacturer": "Manufacturer Name or Unknown",
+  "expiryDate": "MM/YYYY (e.g. 10/2027 or null if not visible)",
+  "batchNumber": "Batch or Lot number if visible, or null",
   "sinhala": {
     "brandName": "වෙළඳ නාමය (සිංහලෙන්)",
     "genericName": "ක්‍රියාකාරී රසායනික නාමය සහ මාත්‍රාව (සිංහලෙන්)",
