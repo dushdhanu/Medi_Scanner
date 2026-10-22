@@ -220,6 +220,38 @@ class MedicineAnalysisResult {
     };
   }
 
+  MedicineAnalysisResult copyWith({
+    String? id,
+    DateTime? timestamp,
+    String? imagePath,
+    bool? isMedicine,
+    String? confidenceRating,
+    String? packageType,
+    String? identifiedManufacturer,
+    String? expiryDate,
+    String? batchNumber,
+    int? remainingPills,
+    MedicineLanguageData? sinhala,
+    MedicineLanguageData? english,
+    String? generalWarning,
+  }) {
+    return MedicineAnalysisResult(
+      id: id ?? this.id,
+      timestamp: timestamp ?? this.timestamp,
+      imagePath: imagePath ?? this.imagePath,
+      isMedicine: isMedicine ?? this.isMedicine,
+      confidenceRating: confidenceRating ?? this.confidenceRating,
+      packageType: packageType ?? this.packageType,
+      identifiedManufacturer: identifiedManufacturer ?? this.identifiedManufacturer,
+      expiryDate: expiryDate ?? this.expiryDate,
+      batchNumber: batchNumber ?? this.batchNumber,
+      remainingPills: remainingPills ?? this.remainingPills,
+      sinhala: sinhala ?? this.sinhala,
+      english: english ?? this.english,
+      generalWarning: generalWarning ?? this.generalWarning,
+    );
+  }
+
   String toJsonString() => jsonEncode(toJson());
 
   factory MedicineAnalysisResult.fromJsonString(String source, {String? imagePath}) {

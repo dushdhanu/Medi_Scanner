@@ -6,7 +6,7 @@ import 'history_service.dart';
 
 class DatabaseService {
   static const String _dbName = 'mediscan_vault.db';
-  static const int _dbVersion = 1;
+  static const int _dbVersion = 2;
   static const String tableMedicines = 'medicines';
 
   static Database? _database;
@@ -38,6 +38,9 @@ class DatabaseService {
             package_type TEXT,
             confidence_rating TEXT,
             image_path TEXT,
+            expiry_date TEXT,
+            batch_no TEXT,
+            remaining_pills INTEGER,
             raw_json TEXT NOT NULL,
             created_at INTEGER NOT NULL,
             is_favorite INTEGER DEFAULT 0,
@@ -48,6 +51,15 @@ class DatabaseService {
         // Create indexes for instant lightning-fast search by brand/generic names
         await db.execute('CREATE INDEX idx_medicines_brand ON $tableMedicines (brand_name_en, brand_name_si)');
         await db.execute('CREATE INDEX idx_medicines_created ON $tableMedicines (created_at DESC)');
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          try {
+            await db.execute('ALTER TABLE $tableMedicines ADD COLUMN expiry_date TEXT');
+            await db.execute('ALTER TABLE $tableMedicines ADD COLUMN batch_no TEXT');
+            await db.execute('ALTER TABLE $tableMedicines ADD COLUMN remaining_pills INTEGER');
+          } catch (_) {}
+        }
       },
     );
 
@@ -90,7 +102,11 @@ class DatabaseService {
   }
 
   /// Insert or update a medicine scan record into the local SQLite database
-  static Future<void> insertMedicine(MedicineAnalysisResult result, {String? notes}) async {
+  static Future<void> insertMedicine(
+    MedicineAnalysisResult result, {
+    String? notes,
+    int? remainingPills,
+  }) async {
     final db = await database;
     await db.insert(
       tableMedicines,
@@ -104,6 +120,9 @@ class DatabaseService {
         'package_type': result.packageType,
         'confidence_rating': result.confidenceRating,
         'image_path': result.imagePath,
+        'expiry_date': result.expiryDate,
+        'batch_no': result.batchNumber,
+        'remaining_pills': remainingPills ?? result.remainingPills,
         'raw_json': result.toJsonString(),
         'created_at': result.timestamp.millisecondsSinceEpoch,
         'is_favorite': 0,
@@ -114,6 +133,32 @@ class DatabaseService {
 
     // Also sync with HistoryService for fallback
     await HistoryService.saveResult(result);
+  }
+
+  /// Update remaining pill count for inventory tracking
+  static Future<void> updateRemainingPills(String id, int count) async {
+    final db = await database;
+    final rows = await db.query(tableMedicines, where: 'id = ?', whereArgs: [id]);
+    String? updatedRawJson;
+    if (rows.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(rows.first['raw_json'] as String) as Map<String, dynamic>;
+        decoded['remainingPills'] = count;
+        updatedRawJson = jsonEncode(decoded);
+      } catch (_) {}
+    }
+
+    final updateData = <String, dynamic>{'remaining_pills': count};
+    if (updatedRawJson != null) {
+      updateData['raw_json'] = updatedRawJson;
+    }
+
+    await db.update(
+      tableMedicines,
+      updateData,
+      where: 'id = ?',
+      whereArgs: [id],
+    );
   }
 
   /// Retrieve all saved medicines with optional search and favorite filter
@@ -157,6 +202,15 @@ class DatabaseService {
       try {
         final rawJson = row['raw_json'] as String;
         final decoded = jsonDecode(rawJson) as Map<String, dynamic>;
+        if (row['remaining_pills'] != null) {
+          decoded['remainingPills'] = row['remaining_pills'];
+        }
+        if (row['expiry_date'] != null && (decoded['expiryDate'] == null || decoded['expiryDate'].toString().isEmpty)) {
+          decoded['expiryDate'] = row['expiry_date'];
+        }
+        if (row['batch_no'] != null && (decoded['batchNumber'] == null || decoded['batchNumber'].toString().isEmpty)) {
+          decoded['batchNumber'] = row['batch_no'];
+        }
         results.add(MedicineAnalysisResult.fromJson(decoded));
       } catch (_) {}
     }

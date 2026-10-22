@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:share_plus/share_plus.dart';
 import '../models/medicine_analysis_result.dart';
+import '../services/database_service.dart';
+import '../services/notification_service.dart';
 import '../services/pdf_export_service.dart';
 import '../services/tts_service.dart';
 import '../widgets/medical_disclaimer_banner.dart';
@@ -24,15 +26,124 @@ class ResultScreen extends StatefulWidget {
 class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final TtsService _ttsService = TtsService();
+  late MedicineAnalysisResult _currentResult;
+  late int _pillCount;
 
   @override
   void initState() {
     super.initState();
+    _currentResult = widget.result;
+    _pillCount = _currentResult.remainingPills ?? 10;
     _tabController = TabController(length: 2, vsync: this);
     _ttsService.init();
     _ttsService.onStateChanged = () {
       if (mounted) setState(() {});
     };
+    NotificationService().scheduleExpiryAlerts(_currentResult);
+  }
+
+  Future<void> _updatePillCount(int newCount) async {
+    final count = newCount < 0 ? 0 : newCount;
+    setState(() {
+      _pillCount = count;
+      _currentResult = _currentResult.copyWith(remainingPills: count);
+    });
+    await DatabaseService.updateRemainingPills(_currentResult.id, count);
+
+    if (count <= 2) {
+      await NotificationService().showRefillAlert(
+        medicineName: _currentResult.english.brandName,
+        remainingPills: count,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: Colors.red.shade800,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            content: Row(
+              children: [
+                const Icon(Icons.warning_amber_rounded, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    count == 0 
+                      ? 'ඖෂධ අවසන්! කරුණාකර ෆාමසියකින් ලබා ගන්න.'
+                      : 'අවධානයයි: ඉතිරිව ඇත්තේ පෙති $count පමණි. Refill එකක් ලබා ගන්න.',
+                    style: GoogleFonts.notoSansSinhala(fontSize: 12.5),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _showSetPillCountDialog() async {
+    final controller = TextEditingController(text: _pillCount.toString());
+    final result = await showDialog<int>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.edit_note_rounded, color: Color(0xFF00696B)),
+            const SizedBox(width: 8),
+            Text(
+              'Set Pill Count / පෙති ගණන',
+              style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Enter total number of tablets/capsules in this pack:',
+              style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: 'Remaining Pills (ඉතිරි පෙති)',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                prefixIcon: const Icon(Icons.medication_rounded),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF00696B),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () {
+              final parsed = int.tryParse(controller.text);
+              if (parsed != null && parsed >= 0) {
+                Navigator.pop(context, parsed);
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null) {
+      await _updatePillCount(result);
+    }
   }
 
   @override
