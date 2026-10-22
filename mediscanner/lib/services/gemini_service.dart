@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import '../models/medicine_analysis_result.dart';
+import '../models/prescription_analysis_result.dart';
 import 'api_key_service.dart';
 
 class GeminiServiceException implements Exception {
@@ -355,6 +356,144 @@ Finish with a clear medical disclaimer.
 
     throw GeminiServiceException(
       'Could not connect to Gemini model for interaction check: $lastError',
+      code: 'MODEL_UNAVAILABLE',
+    );
+  }
+
+  /// Decipher and analyze handwritten doctor's prescriptions using Gemini Multimodal OCR
+  static Future<PrescriptionAnalysisResult> analyzePrescriptionImage({
+    required Uint8List imageBytes,
+    String? imagePath,
+    String? customApiKey,
+  }) async {
+    final apiKey = (customApiKey != null && customApiKey.trim().isNotEmpty)
+        ? customApiKey.trim()
+        : await ApiKeyService.getApiKey();
+
+    if (apiKey.isEmpty) {
+      throw const GeminiServiceException(
+        'Please configure your Gemini API Key in Settings first.',
+        code: 'MISSING_API_KEY',
+      );
+    }
+
+    const prescriptionPrompt = '''
+You are a senior clinical pharmacist and medical OCR handwriting recognition expert specializing in deciphering doctors' cursive handwritten prescriptions, clinical notations, and Latin medical abbreviations.
+
+Carefully examine this handwritten prescription image.
+Identify:
+1. Doctor or Hospital/Clinic Name and Date (if visible).
+2. Patient Name (if visible).
+3. The list of all prescribed medicines line-by-line.
+
+For each medication line, extract:
+- "drugName": Brand or generic medicine name (e.g. "Amoxicillin", "Paracetamol", "Omeprazole", "Metformin").
+- "genericName": Active chemical compound name.
+- "dosageStrength": Strength / formulation (e.g. "500mg tab", "250mg/5ml syrup", "20mg cap").
+- "frequencyCode": Medical abbreviation used on the script:
+  - "o.d." or "mane" = Once daily (morning)
+  - "nocte" = Once daily at bedtime
+  - "b.d." or "b.i.d." = Twice daily (every 12 hours)
+  - "t.d.s." or "t.i.d." = Thrice daily (every 8 hours)
+  - "q.d.s." or "q.i.d." = Four times daily (every 6 hours)
+  - "p.r.n." = As needed / when necessary
+  - "stat" = Immediately
+- "instructionsEn": Clear English dosage instruction (e.g. "Take 1 tablet twice daily after meals").
+- "instructionsSi": Fluent, natural Sinhala dosage instruction (e.g. "කෑමට පසු දිනකට දෙවරක් පෙති 1 බැගින් ගන්න").
+- "mealTiming": One of: "Before meals", "After meals", "With meals", "Unspecified".
+- "mealTimingSi": One of: "කෑමට පෙර", "කෑමට පසු", "ආහාර සමඟ", "සඳහන්ව නැත".
+- "duration": Duration of treatment in English (e.g. "5 days", "1 week", "1 month"). Note: "x 5/7" means 5 days, "x 2/52" means 2 weeks, "x 1/12" means 1 month.
+- "durationSi": Treatment duration in Sinhala (e.g. "දින 5ක්", "සති 2ක්", "මාස 1ක්").
+- "specialPrecautions": Any warning, e.g., "Complete full antibiotic course", "Take with plenty of water".
+
+Return STRICT VALID JSON ONLY (no markdown formatting, no commentary):
+{
+  "doctorOrClinicName": string or null,
+  "prescriptionDate": string or null,
+  "patientName": string or null,
+  "medicines": [
+    {
+      "drugName": "string",
+      "genericName": "string",
+      "dosageStrength": "string",
+      "frequencyCode": "string",
+      "instructionsEn": "string",
+      "instructionsSi": "string",
+      "mealTiming": "string",
+      "mealTimingSi": "string",
+      "duration": "string",
+      "durationSi": "string",
+      "specialPrecautions": "string or null"
+    }
+  ],
+  "clinicalNotesEn": "string",
+  "clinicalNotesSi": "string",
+  "generalWarning": "Handwritten prescriptions must be formally checked and dispensed by a licensed registered pharmacist."
+}
+''';
+
+    final modelsToTry = _getModelsToTry();
+    String? lastErrorMessage;
+
+    int i = 0;
+    while (i < modelsToTry.length) {
+      final modelName = modelsToTry[i];
+      i++;
+
+      for (int attempt = 0; attempt < 3; attempt++) {
+        try {
+          final model = GenerativeModel(
+            model: modelName,
+            apiKey: apiKey,
+          );
+
+          final response = await model.generateContent([
+            Content.text(prescriptionPrompt),
+            Content.data('image/jpeg', imageBytes),
+          ]);
+
+          final rawText = response.text;
+          if (rawText == null || rawText.trim().isEmpty) {
+            throw const GeminiServiceException(
+              'Received an empty response from Gemini Vision. Please try a clearer prescription photo.',
+              code: 'EMPTY_RESPONSE',
+            );
+          }
+
+          final cleanedJson = _extractJson(rawText);
+          final Map<String, dynamic> decoded = jsonDecode(cleanedJson) as Map<String, dynamic>;
+          _cachedWorkingModel = modelName;
+          return PrescriptionAnalysisResult.fromJson(decoded, imagePath: imagePath);
+        } on GenerativeAIException catch (e) {
+          final msg = e.message.toLowerCase();
+          if (msg.contains('503') || msg.contains('high demand') || msg.contains('unavailable')) {
+            if (attempt < 2) {
+              await Future.delayed(Duration(milliseconds: 1500 * (attempt + 1)));
+              continue;
+            }
+          }
+          if (_isModelUnavailableOrBusy(msg)) {
+            lastErrorMessage = e.message;
+            break;
+          }
+          rethrow;
+        } catch (e) {
+          if (e is GeminiServiceException) rethrow;
+          final errorStr = e.toString().toLowerCase();
+          if (_isModelUnavailableOrBusy(errorStr)) {
+            lastErrorMessage = e.toString();
+            break;
+          }
+          throw GeminiServiceException(
+            'Failed to decipher prescription: $e',
+            code: 'PRESCRIPTION_PARSE_ERROR',
+          );
+        }
+      }
+    }
+
+    throw GeminiServiceException(
+      'Could not access Gemini model for prescription deciphering: $lastErrorMessage',
       code: 'MODEL_UNAVAILABLE',
     );
   }
