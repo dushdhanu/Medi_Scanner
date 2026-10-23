@@ -10,6 +10,7 @@ class MedicineLanguageData {
   final List<String> sideEffects;
   final List<String> precautions;
   final String storageGuidelines;
+  final String? unreadableNotice;
   final String? spcGenericAlternative;
   final List<String> dietaryWarnings;
 

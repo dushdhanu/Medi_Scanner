@@ -53,6 +53,7 @@ class _InteractionCheckerScreenState extends State<InteractionCheckerScreen> {
     }
 
     final hasApiKey = await ApiKeyService.hasApiKey();
+    if (!mounted) return;
     if (!hasApiKey) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -88,6 +89,7 @@ class _InteractionCheckerScreenState extends State<InteractionCheckerScreen> {
         _isChecking = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isChecking = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

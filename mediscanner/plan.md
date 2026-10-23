@@ -25,7 +25,7 @@ This document outlines the strategic engineering roadmap and feature specificati
 | **Phase 5** | **Smart Expiry & Pill Inventory** | AI EXP Date Extractor, Expiry Alerts, Pill Count & Refill Alarms | ✅ Completed |
 | **Phase 6** | **Handwritten Prescription Scanner** | Doctor Cursive OCR, Multi-Med Extraction, Batch Dose Scheduler | ✅ Completed |
 | **Phase 7** | **Family Profiles & Biometric Security** | Multi-Member Cabinets, Fingerprint / Face Unlock (`local_auth`) | ✅ Completed |
-| **Phase 8** | **Sri Lankan Health-Tech Integrations** | SPC / Osu Sala Generic Alternatives, Food Warning Badges, Doctor Export | 🟢 Enhancement |
+| **Phase 8** | **Sri Lankan Health-Tech Integrations** | SPC / Osu Sala Generic Alternatives, Food Warning Badges, Doctor Export | ✅ Completed |
 
 ---
 
@@ -98,15 +98,15 @@ This document outlines the strategic engineering roadmap and feature specificati
 
 ---
 
-## 🇱🇰 Phase 8: Sri Lankan Health-Tech Integrations (ලංකාවේ ඖෂධ සහ ආහාර ගැටීම්)
+## 🇱🇰 Phase 8: Sri Lankan Health-Tech Integrations (ලංකාවේ ඖෂධ සහ ආහාර ගැටීම්) ✅ Completed
 
-### 8.1 SPC / Rajya Osu Sala Generic Alternatives (ලාභදායී ආදේශක ඖෂධ)
+### 8.1 SPC / Rajya Osu Sala Generic Alternatives (ලාභදායී ආදේශක ඖෂධ) ✅
 * **Goal**: Help patients find affordable, high-quality generic alternatives when branded medicines are costly or out of stock.
 * **Architecture**:
   - AI identifies the active chemical compound (e.g. *Augmentin $\rightarrow$ Co-Amoxiclav*).
   - Recommends approved Sri Lankan SPC (State Pharmaceuticals Corporation) / Osu Sala equivalents.
 
-### 8.2 Food & Beverage Contraindication Badges
+### 8.2 Food & Beverage Contraindication Badges ✅
 * **Goal**: Visually highlight critical dietary cautions alongside usage instructions.
 * **Architecture**:
   - Visual iconography on `ResultScreen`:
@@ -115,7 +115,7 @@ This document outlines the strategic engineering roadmap and feature specificati
     - 🍷 **Alcohol**: Strict contraindication with Metronidazole / sedatives.
     - 🍽️ **Meal Timing**: Before meals, With meals, or After meals.
 
-### 8.3 1-Tap Doctor WhatsApp / Email Summary
+### 8.3 1-Tap Doctor WhatsApp / Email Summary ✅
 * **Goal**: Instantly export active prescriptions to a doctor or clinic prior to consultation.
 * **Architecture**:
   - Compiles all active medications in SQLite into an encrypted summary PDF.
